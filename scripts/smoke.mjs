@@ -41,7 +41,7 @@ async function start() {
 
 const get = async (url, headers) => {
   const res = await fetch(base + url, { redirect: 'manual', headers });
-  return { status: res.status, location: res.headers.get('location'), body: await res.text() };
+  return { status: res.status, location: res.headers.get('location'), encoding: res.headers.get('content-encoding'), body: await res.text() };
 };
 // The state serialized in the HTML is valid JSON (serialize-javascript with isJSON).
 const stateKeys = (html) => {
@@ -68,6 +68,10 @@ async function run() {
   check('/ serializes only config + home', stateKeys(home.body) === 'config,home', stateKeys(home.body));
   check('/ does not leak the request cookie', !home.body.includes('SECRET'));
   check('/ has no modal content', !home.body.includes('__MODAL_LOGIN__'));
+  // `fetch` sends `Accept-Encoding` and decompresses on its own: the checks above already ran on a compressed body.
+  check('/ is compressed when the client accepts it', /^(gzip|br|deflate)$/.test(home.encoding ?? ''), String(home.encoding));
+  const plain = await get('/', { 'accept-encoding': 'identity' });
+  check('/ is not compressed for `Accept-Encoding: identity`', plain.status === 200 && plain.encoding === null, String(plain.encoding));
   check('/ renders header and footer in the HTML', /<header[\s>]/.test(home.body) && /<footer[\s>]/.test(home.body) && home.body.includes('Case in vendita a Milano'));
   const scripts = [...home.body.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
   check('/ loads only vendor, main and route scripts', scripts.length > 0 && !scripts.some((s) => /modal/.test(s)), scripts.join(' '));

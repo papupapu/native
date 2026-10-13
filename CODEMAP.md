@@ -9,7 +9,7 @@ Checked by `node scripts/check-ai-docs.mjs` (paths exist, backticked symbols app
 | Path | Role |
 | --- | --- |
 | `src/server/boot.ts` | Production entry `boot`: `loadConfig` → `readManifest` / `readCriticalCss` warm-up → `createApp` → listen, graceful shutdown on SIGTERM/SIGINT |
-| `src/server/app.ts` | `createApp(deps: AppDeps)`: the Express mount order (`/status`, `/favicon.ico`, `/.well-known/appspecific`, `/api/v1`, static or `mountAssets`, cookies, headers, context, `seoRedirect`, then the `/{*splat}` render handler, then `errorHandler`) |
+| `src/server/app.ts` | `createApp(deps: AppDeps)`: the Express mount order (`/status`, `/favicon.ico`, `/.well-known/appspecific`, `/api/v1`, static or `mountAssets`, cookies, headers, context, `seoRedirect`, `compression()` (only the render handler's responses: HTML, SSR redirects, 500 page; `/status`, `/api/v1` and assets are mounted above it and stay uncompressed), then the `/{*splat}` render handler, then `errorHandler`) |
 | `src/server/config.ts` | `loadConfig`: validated `PORT`, `NODE_ENV`, `distDir` |
 | `src/server/middleware/{context,headers,seoRedirect,errors}.ts` | `requestContext` (builds `RequestCtx`: locale, bot detection, base URL, cookies, into `res.locals`), `securityHeaders`, `seoRedirect` (table of 301s, `REDIRECTS`), `errorHandler` (500 page, `res.destroy` when headers are already sent) |
 | `src/server/api/router.ts` | `apiRouter`: `/api/v1/{home,search,listings/:id,swpeople/:id}`, what the browser services call on client navigations; backed by `createInProcessServices` |

@@ -32,7 +32,7 @@ npm run typecheck
 
 ## How a request works
 
-1. `/status`, `/favicon.ico`, `/.well-known/appspecific` (plain 404: Chrome DevTools probe, no render), `/api/v1`, static, cookies, headers, `requestContext`, `seoRedirect`, then the catch-all render.
+1. `/status`, `/favicon.ico`, `/.well-known/appspecific` (plain 404: Chrome DevTools probe, no render), `/api/v1`, static, cookies, headers, `requestContext`, `seoRedirect`, `compression`, then the catch-all render.
 2. `makeStore({preloadedState: {config}})` per request, put in a React Router `RouterContextProvider`.
 3. `createStaticHandler(routes).query(request)`: the route loaders (static, in the main bundle) first
    `await import()` the page chunk, so its slice is injected before the thunk runs, then dispatch the fake fetch.
@@ -54,6 +54,7 @@ npm run typecheck
 - **The `notfound` route has an empty `Component`** only to silence React Router's "leaf route without element" warning (the loader always throws, so it is never rendered). `/.well-known/appspecific/*` is answered 404 before SSR for the same probe.
 - **Status from the fetch result (`/cerca?q=…`).** The search loader *returns* `data(null, {status: 404})` when the query has 0 results: the page still renders (shell, form, footer) and the static handler uses that as `statusCode` (React Router: a non-200 status of a returned `data()` counts only if no loader threw). A `throw data(…)` instead renders the error boundary, which is what `/annunci/404` wants. The status only matters for the server render (first load, bots); client navigations ignore it. The empty page also gets `noindex`.
 - **Rejected thunks never leak their message.** Slices store the fixed `REQUEST_FAILED` (`src/store/errors.ts`) instead of `action.error.message`, because slice state is serialized into the HTML. The real error is logged on the server by `render.tsx` (`[ssr] loader error in "content"`: the id of the route holding the error boundary); on client navigations `RouterProvider`'s `onError` (`src/client/entry.tsx`) logs `[router] error` in the browser console. Expected `data()`/404 responses are not logged.
+- **HTML is compressed by the app, assets are not.** `compression()` (`src/server/app.ts`) is mounted after `seoRedirect` and before the render handler, so it only covers what the SSR handler sends (pages, SSR redirects, the 500 page). `/status`, `/api/v1` and the static assets (or webpack-dev-middleware in dev) are mounted above it and stay uncompressed: a CDN or reverse proxy is expected to compress them. It negotiates gzip/br/deflate from `Accept-Encoding` and adds `Vary: Accept-Encoding`. No page uses Suspense today, so the shell is the whole document. `compression` also provides `res.flush()`, which React calls after each chunk written by `stream.pipe(res)`: a safeguard, so that if a Suspense boundary is ever added the gzip buffer does not hold its content back (checked with a throwaway server, not with a page of this repo). Measured on `/`: 9706 B identity, 3072 B gzip, 2965 B br. Found with the DevTools performance insight "DocumentLatency".
 - **No `webpack-dev-server`**: `webpack-dev-middleware` + `webpack-hot-middleware` + React Refresh inside the same Express app. Server compiler in `watch()` writing to disk. `src/server/**` and `build/**` edits restart the process (`node --watch-path`).
 
 ## Never gate shell content with a pending `use()`
@@ -73,7 +74,8 @@ Historical note. An earlier lazy footer was a `<Suspense>` boundary whose child 
 | `check:bundle`: lazy parts discovered from the `import()` calls (`LoginModal`): no module or marker in main/vendor/route-*; its chunk exists, is not initial and contains it | 17 ok, 0 failed (after the footer removal) |
 | `bundle:compare`: growth vs the merge-base and first-load JS per route within `build/bundle-budget.json` | exit 0 = ok/warnings, 1 = BLOCKER, 2 = not measurable |
 | Network on load: only vendor, main, route-*; no modal JS | ok |
-| `/` has header and footer (with their links) in the SSR HTML (`npm run smoke`) | ok (`npm run smoke`, 25 checks) |
+| `/` has header and footer (with their links) in the SSR HTML (`npm run smoke`) | ok (`npm run smoke`, 27 checks) |
+| `/` is compressed when the client accepts it, and not with `Accept-Encoding: identity` (`npm run smoke`) | ok |
 | Modal: `modal-login` requested on hover (prefetch) or on click, never before | ok (checked with and without hover) |
 | Search: `/cerca?q=milano` 200, `/cerca?q=zzz` 404 with the full search page in the HTML (form, `noindex`), `/cerca` 200 | ok (curl, prod) |
 | Search, client side: empty ↔ non-empty queries via link and `<Form>`, back/forward, no full reload; full load of `/cerca?q=zzz` hydrates (document status 404). The only console message is Chrome's own "404" for the document | ok (prod) |

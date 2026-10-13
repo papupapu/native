@@ -1,4 +1,5 @@
 import path from 'node:path';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type { Express } from 'express';
@@ -52,6 +53,11 @@ export function createApp(deps: AppDeps): Express {
   app.use(securityHeaders());
   app.use(requestContext());
   app.use(seoRedirect());
+  // HTML only: it sits after `/api/v1` and the static assets, which stay uncompressed (a CDN or the
+  // reverse proxy usually does that). No page uses Suspense today, so the shell is the whole document.
+  // `compression` also adds `res.flush()`, which React calls after each chunk it writes: if a Suspense
+  // boundary is ever added, the gzip buffer will not hold its content back.
+  app.use(compression());
 
   // Express 5: async handlers that reject are forwarded to the error handler.
   app.get('/{*splat}', async (req, res) => {

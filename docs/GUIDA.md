@@ -197,7 +197,8 @@ Browser: GET /annunci/1
    ▼
 Express (src/server/app.ts), nell'ordine:
    /status, /favicon.ico, /.well-known/appspecific, /api/v1, file statici (/static),
-   cookieParser, securityHeaders, requestContext (dominio, lingua, bot?), seoRedirect (301)
+   cookieParser, securityHeaders, requestContext (dominio, lingua, bot?), seoRedirect (301),
+   compression (gzip/br sull'HTML)
    │
    ▼  catch-all  app.get('/{*splat}')  →  render.cjs
 src/ssr/render.tsx
@@ -217,6 +218,12 @@ Dettagli utili:
 
 - I bot (`isBot`) ricevono l'HTML solo quando tutto è pronto (`onAllReady`); gli altri appena la
   "shell" è pronta (`onShellReady`), con il resto in streaming.
+- `compression()` è montato dopo `seoRedirect`, quindi comprime solo ciò che manda il render (pagine,
+  redirect SSR, pagina 500). `/status`, `/api/v1` e i file statici sono montati sopra e restano non
+  compressi (se ne occupa una CDN o il reverse proxy). Sceglie gzip/br/deflate da `Accept-Encoding` e
+  aggiunge `Vary: Accept-Encoding`. Oggi nessuna pagina usa `Suspense`: la shell è l'intero documento.
+  `compression` espone anche `res.flush()`, che React chiama dopo ogni chunk che scrive: è una
+  salvaguardia, nel caso si aggiunga un boundary, perché il buffer gzip non ne trattenga il contenuto.
 - Nello stato serializzato finiscono solo `config` e le slice **delle route che hanno matchato**
   (`handle.slices`). I cookie non ci arrivano mai.
 - In produzione il CSS di `main` e della route è **inlinato** nell'`<head>` (CSS critico) invece di

@@ -47,7 +47,8 @@ Quattro regole che spiegano quasi tutto:
 3. **Il server serializza lo stato nella pagina**, così il browser parte già con i dati e non
    rifà le fetch.
 4. **Il codice di ogni pagina è in un file JS separato** (chunk), scaricato solo quando serve.
-   Lo stesso vale per la modale (al click) e il footer (quando si avvicina al viewport).
+   Lo stesso vale per la modale (al click). Header e footer, invece, sono import statici: stanno
+   nell'HTML del server e nel CSS di `main`.
 
 ---
 
@@ -62,7 +63,7 @@ portal/
 │   ├── AssetManifestPlugin.ts  produce manifest.json: "quali file servono a quale pagina"
 │   ├── build.ts                `npm run build`
 │   ├── dev.ts                  `npm run dev`
-│   ├── check-bundle.ts         `npm run check:bundle`: controlla che le parti lazy (modale, footer, ...) non finiscano nel bundle iniziale
+│   ├── check-bundle.ts         `npm run check:bundle`: controlla che le parti lazy (modale, ...) non finiscano nel bundle iniziale
 │   ├── bundle-compare.ts       `npm run bundle:compare`: peso del JS di primo caricamento per route, confrontato col merge-base
 │   └── bundle-budget.json      soglie (delta e assolute) usate da bundle-compare.ts
 ├── src/
@@ -80,13 +81,15 @@ portal/
 │   ├── client/entry.tsx      Entry del browser: ricostruisce store e router, poi hydrateRoot
 │   ├── app/                  L'applicazione vera, condivisa da server e browser
 │   │   ├── routes.ts           l'albero delle route
-│   │   ├── AppShell.tsx        header + <Outlet/> + footer (persistente tra le pagine)
+│   │   ├── AppShell.tsx        header + <Outlet/> + footer (persistente tra le pagine); qui stanno i dati di header e footer
 │   │   ├── RouteErrorBoundary.tsx  cosa si vede per 404/500 (dentro la shell)
 │   │   ├── types.ts            RouteHandle: i metadati di ogni route
 │   │   ├── pages/<pagina>/     route.ts + slice.ts + Page.tsx + Page.module.scss
 │   │   ├── modal/              registry + provider: la modale si carica al click
-│   │   ├── footer/             Footer lazy solo client (placeholder, poi import() quando è vicino al viewport)
-│   │   └── lazy/               useOnVisible, resolveLazyMatches
+│   │   └── lazy/               resolveLazyMatches, useOnVisible (per ora inutilizzato)
+│   ├── components/           Componenti presentazionali riusabili (props in, markup out), import statici
+│   │   ├── Header/             Header.tsx + Header.module.scss
+│   │   └── Footer/             Footer.tsx + Footer.module.scss
 │   ├── store/                Redux Toolkit: makeStore, rootReducer, hook tipizzati, storeContext
 │   ├── services/             Accesso ai dati: tipi, fixture, versione "in-process" e versione "browser"
 │   ├── globals.d.ts          dichiara __DEV__, i campi di window e i moduli .scss
@@ -114,7 +117,7 @@ webpack:
 | [`build/webpack.client.ts`](../build/webpack.client.ts) | Config del **bundle per il browser**: entry `src/client/entry.tsx`, nomi dei file con hash (solo in produzione), `splitChunks` (solo un chunk `vendor`), plugin (DefinePlugin, estrazione CSS, manifest, HMR/React Refresh in dev, analyzer con `ANALYZE=1`) |
 | [`build/webpack.server.ts`](../build/webpack.server.ts) | Config del **bundle SSR**: entry `src/ssr/render.tsx`, output unico `dist/server/render.cjs` (CommonJS), con tutte le dipendenze npm incluse |
 | [`build/shared.ts`](../build/shared.ts) | Le regole dei loader usate da entrambe: `swc-loader` per TS/JSX e `css-loader` + `sass-loader` per gli SCSS (CSS Modules per i `*.module.scss`, token iniettati con `additionalData`) |
-| [`build/AssetManifestPlugin.ts`](../build/AssetManifestPlugin.ts) | Plugin nostro: scrive `dist/client/manifest.json` con i file di `main`/`vendor` e di ogni chunk con nome (`route-*`, `modal-*`, `footer-*`) |
+| [`build/AssetManifestPlugin.ts`](../build/AssetManifestPlugin.ts) | Plugin nostro: scrive `dist/client/manifest.json` con i file di `main`/`vendor` e di ogni chunk con nome (`route-*`, `modal-*`) |
 | [`build/build.ts`](../build/build.ts) | `npm run build`: avvia le due compilazioni (client + server), scrive anche `dist/stats.json` |
 | [`build/dev.ts`](../build/dev.ts) | `npm run dev`: stesse config con `dev: true`, montate dentro Express con `webpack-dev-middleware` + `webpack-hot-middleware` |
 
@@ -200,8 +203,7 @@ src/ssr/render.tsx
           └─ loader → thunk → services (in-process, nessuna chiamata HTTP) → store
    3. se il loader ha lanciato redirect()  → risponde 30x e finisce
    4. status = result.statusCode   200, 404… deciso PRIMA di mandare il primo byte
-   5. sceglie i file: main + vendor + chunk della route (mai JS né CSS di modale e footer: il server
-      rende solo il segnaposto del footer)
+   5. sceglie i file: main + vendor + chunk della route (mai JS né CSS della modale)
    6. renderToPipeableStream(<Document><Provider><StaticRouterProvider/></Provider></Document>)
    7. lo stato (store + dati del router) viene scritto in uno <script> nella pagina
    ▼
@@ -619,7 +621,7 @@ children: [homeRoute, listingRoute, searchRoute, agencyRoute, notFoundRoute],   
 
 ```bash
 npm run typecheck
-npm run build && npm run check:bundle        # (cerca tu `route-agency` nell'output: check:bundle non lo pretende, controlla che i chunk route non contengano modale/footer)
+npm run build && npm run check:bundle        # (cerca tu `route-agency` nell'output: check:bundle non lo pretende, controlla che i chunk route non contengano la modale)
 PORT=3100 npm start                            # (in un altro terminale; 3100 per non scontrarsi col dev server)
 curl -s -o /dev/null -w "%{http_code}\n" localhost:3100/agenzie/centro-casa   # 200
 curl -s -o /dev/null -w "%{http_code}\n" localhost:3100/agenzie/nope           # 404
@@ -753,7 +755,7 @@ Cosa tenere d'occhio quando le pagine passano da 3 a 30 e i team da 1 a 5.
 
 - **Il bundle iniziale deve restare piccolo:** `main` e `vendor` contengono solo ciò che serve a ogni
   pagina. Ogni nuova libreria pesante va in un chunk lazy (modale, pagina, componente sotto la piega).
-- **`npm run check:bundle` in CI.** Fallisce se una parte lazy (modale, footer, qualsiasi `import()` con `webpackChunkName` non `route-`) finisce nel bundle iniziale o nei chunk di route, o se il suo chunk manca: è
+- **`npm run check:bundle` in CI.** Fallisce se una parte lazy (modale, qualsiasi `import()` con `webpackChunkName` non `route-`) finisce nel bundle iniziale o nei chunk di route, o se il suo chunk manca: è
   il modo più economico per accorgersi di una regressione.
 - **`npm run bundle:compare` prima di una PR** (dopo `build`). Misura il JS gzip di primo caricamento per route e lo confronta col merge-base con master (la baseline si compila una volta in un git worktree `.bundle-baseline/` e resta in cache in `node_modules/.cache/bundle-guard/`). Le soglie sono in `build/bundle-budget.json`. Exit 0 ok o avvisi, 1 BLOCKER, 2 non misurabile. Opzioni: `--modules`, `--json`, `--base=<ref>`, `--rebuild-base`, `--allow-stale`.
 - **Import dinamici sempre con stringa letterale** (vedi `modal/registry.ts`). Con un template literal
@@ -780,26 +782,26 @@ navigazione client che torna sulla stessa route non riscaricano il CSS.
 
 | Inline (CSS critico) | Non inline |
 | --- | --- |
-| `main`: `global.scss`, `AppShell.module.scss`, `Footer.module.scss` (il segnaposto) | `modal-login`: CSS di `LoginModal`, chunk lazy |
-| `route-<x>`: il `Page.module.scss` della pagina e di ciò che la pagina importa staticamente | `footer`: CSS di `FooterContent`, chunk lazy |
+| `main`: `global.scss`, `AppShell.module.scss`, `Header.module.scss`, `Footer.module.scss` | `modal-login`: CSS di `LoginModal`, chunk lazy |
+| `route-<x>`: il `Page.module.scss` della pagina e di ciò che la pagina importa staticamente | |
 
 **Esempio guidato: "la pagina X ha una sezione pesante sotto la piega (galleria, mappa)".**
 
 1. Se `pages/x/Page.tsx` importa `Gallery` in modo statico (`import { Gallery } from './Gallery.tsx'`),
    il `Gallery.module.scss` entra nel chunk `route-x` e quindi nel CSS inlinato di ogni richiesta a `/x`,
    anche se l'utente non scorre mai fin lì.
-2. Per tenerlo fuori, falla diventare un componente lazy con il suo `.module.scss`, come
-   `src/app/footer/Footer.tsx` → `FooterContent.tsx`: un wrapper leggero (importato staticamente, con
-   solo un segnaposto di altezza riservata nel suo `.module.scss`) che fa
+2. Per tenerlo fuori, falla diventare un componente lazy con il suo `.module.scss`: un wrapper leggero
+   (importato staticamente, con solo un segnaposto di altezza riservata nel suo `.module.scss`) che fa
    `import(/* webpackChunkName: "gallery" */ './GalleryContent.tsx')` quando `useOnVisible` segnala che
    il segnaposto è vicino al viewport. Il `GalleryContent.module.scss` finisce nel chunk `gallery`,
    che si scarica (JS + CSS) solo allora.
 3. Non serve registrare nulla: `npm run check:bundle` trova da solo ogni `import(/* webpackChunkName: "gallery" */ './GalleryContent.tsx')`
    con chunk non `route-` e fallisce se un import statico lo riporta in `main` o in `route-x`. Per
    aggiungere anche il controllo sulla stringa, esporta nel componente una costante `*_MARKER = '__GALLERY_CONTENT__'`,
-   come `FOOTER_MARKER` in `FooterContent.tsx`.
+   come `MODAL_MARKER` in `LoginModal.tsx`.
 4. Il segnaposto è renderizzato dal server: se la sezione conta per la SEO, questo pattern non va bene
-   (il contenuto non è nell'HTML, vedi il footer).
+   (il contenuto non è nell'HTML). Per questo header e footer sono statici. Nel repo non c'è ancora un
+   esempio di componente lazy al viewport: `useOnVisible` (`src/app/lazy/`) è pronto ma inutilizzato.
 
 **Budget.** Il CSS inlinato (`main` + una route) dovrebbe stare nei circa 14 KB del primo round trip TCP.
 `CRITICAL_CSS_BUDGET` in `assets.ts` vale 14 KB e, all'avvio, `readCriticalCss` scrive su `console.warn`
@@ -816,7 +818,7 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 **Come verificarlo.**
 
 1. `npm run build && npm run smoke`: i check sul CSS critico controllano che `/` inlini `main` e
-   `route-home` e non linki nessun foglio di stile, che non ci sia CSS di modale o footer, che
+   `route-home` e non linki nessun foglio di stile, che non ci sia CSS della modale, che
    `/annunci/1` inlini `route-listing`, che `/non-esiste` inlini solo `main` e che `main*.js` contenga
    `data-href` (se una versione futura del plugin perdesse la ricerca dello `<style>`, i file verrebbero
    riscaricati in silenzio: lo smoke lo segnala).
@@ -844,18 +846,16 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 - **Avvio:** `boot.ts` legge manifest e CSS all'avvio, quindi un build mancante fa fallire il boot, non la
   prima richiesta. Tienilo così.
 - **Shutdown pulito** su SIGTERM già presente (`server.close` + timeout).
-- **Test end-to-end** (Playwright): consigliati per "naviga prima che il footer sia caricato" e per
-  i casi 404. Nel PoC le verifiche sono state fatte a mano.
+- **Test end-to-end** (Playwright): consigliati per la navigazione client e per i casi 404. Nel PoC le verifiche sono state fatte a mano.
 - **Rspack:** la config è scritta per essere compatibile; se le build diventano lente è un cambio
   quasi a costo zero (non misurato).
 
 ### Cose che hanno già fatto danni (e perché sono scritte qui)
 
 - **Una `Suspense` con `use(promise)` mai risolta nella shell** blocca *tutte* le navigazioni finché
-  non si risolve: l'URL cambia ma la pagina no (era un primo tentativo di footer con SSR e hydration
-  differita, poi rimosso). Dentro la shell, o dentro un componente che la shell ri-renderizza a ogni
-  navigazione, non mettere boundary che restano "in attesa". Il footer attuale (segnaposto + `import()`)
-  non ne ha.
+  non si risolve: l'URL cambia ma la pagina no (era un tentativo di footer lazy con SSR e hydration
+  differita, poi rimosso; ora il footer è statico). Dentro la shell, o dentro un componente che la shell
+  ri-renderizza a ogni navigazione, non mettere boundary che restano "in attesa".
 - **Creare lo store prima di caricare i chunk delle route** nel browser: le slice non ancora registrate
   perdono lo stato del server. L'ordine in `entry.tsx` è voluto.
 
@@ -868,7 +868,6 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 | `dist/server` è condiviso tra `dev` e `build` | Il dev scrive lì `render.cjs`. Prima di `npm start` rifai `npm run build` |
 | Il server non passa da webpack | Importa con estensione `.ts`, niente enum/JSX, e non importare `src/app/` da `src/server/` |
 | Chrome DevTools chiama `/.well-known/appspecific/com.chrome.devtools.json` | Risponde 404 secco (`app.ts`), non serve rendere la shell |
-| Il footer non c'è nell'HTML del server | È voluto: il server rende un segnaposto, il footer (JS + CSS) arriva quando è vicino al viewport. Un footer con link SEO non può seguire questo schema |
 | `Component: () => null` su `notFound` | Esiste solo per zittire il warning di React Router (il loader lancia sempre) |
 
 ---
@@ -880,7 +879,7 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 | `npm run dev` | server di sviluppo su `localhost:3000` (`PORT=…` per cambiarla): HMR dei componenti; le modifiche a `src/server` o `build` riavviano il processo. Attenzione: `src/services/*` aggiorna l'SSR ma **non** l'API `/api/v1` (Express la importa a tempo di avvio): dopo aver cambiato un service riavvia `npm run dev` |
 | `npm run build` | build di produzione in `dist/` |
 | `npm start` | server di produzione (richiede la build) |
-| `npm run check:bundle` | verifica che le parti lazy (modale, footer, ...) siano fuori dal bundle iniziale |
+| `npm run check:bundle` | verifica che le parti lazy (modale, ...) siano fuori dal bundle iniziale |
 | `npm run bundle:compare` | JS di primo caricamento per route vs merge-base, giudicato da `build/bundle-budget.json` (richiede la build) |
 | `npm run analyze` | build + `dist/bundle-report.html` |
 | `npm run typecheck` | `tsc --noEmit` |

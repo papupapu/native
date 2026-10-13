@@ -11,7 +11,7 @@ TARGET = the branch given as argument, else `master`.
 
 1. **Scope.** `git fetch origin`, then `git diff --stat origin/<TARGET>...HEAD`. If nothing under `src/`, `build/`, `package.json` or `package-lock.json` changed, answer "no bundle impact" and stop.
 2. **Build.** `npm run build` (seconds). The comparison refuses a `dist/` older than the sources.
-3. **Leak check.** `npm run check:bundle`: every lazy part (modal, footer, any `import()` with a non-`route-` `webpackChunkName`) must stay out of main/vendor/route-*. A FAIL here is a BLOCKER: find the static import that pulled it in (`git diff` of the files that import it).
+3. **Leak check.** `npm run check:bundle`: every lazy part (modal, any `import()` with a non-`route-` `webpackChunkName`) must stay out of main/vendor/route-*. A FAIL here is a BLOCKER: find the static import that pulled it in (`git diff` of the files that import it).
 4. **Compare.** `npm run bundle:compare -- --modules`. The first run on a given merge-base also builds the baseline in a git worktree (`.bundle-baseline/`, removed afterwards; cached in `node_modules/.cache/bundle-guard/<sha>.json`). Thresholds: `build/bundle-budget.json`. Flags: `--json`, `--base=<ref>`, `--rebuild-base`, `--allow-stale`.
    - Exit 1 = BLOCKER, exit 2 = could not measure (the message says why: stale build, missing ref, baseline build failed).
    - Do not read `dist/` by hand (denied); the script output is the measurement. `ANALYZE=1 npm run build` writes `dist/bundle-report.html` for the person, not for you.

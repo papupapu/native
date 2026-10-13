@@ -37,7 +37,7 @@ Checked by `node scripts/check-ai-docs.mjs` (paths exist, backticked symbols app
 | --- | --- |
 | `src/app/routes.ts` | `routes`: `root` (`AppShell`) → pathless `content` (holds `RouteErrorBoundary`) → the page routes |
 | `src/app/types.ts` | `RouteHandle`: `pageType`, `chunk` (the server links its assets) and `slices` (the only ones serialized) |
-| `src/app/{AppShell.tsx,AppShell.module.scss,global.scss}` | `AppShell`: header with the demo links, `<Outlet/>`, `Footer`, `ModalProvider`; `LoginButton` opens/prefetches the `login` modal |
+| `src/app/{AppShell.tsx,AppShell.module.scss,global.scss}` | `AppShell`: `Header` (data `HEADER_LINKS`), `<Outlet/>`, `Footer` (data `FOOTER_SECTIONS`), `ModalProvider`; `LoginButton` opens/prefetches the `login` modal |
 | `src/app/RouteErrorBoundary.tsx` | `RouteErrorBoundary`: 404/500 content rendered inside the shell, with `noindex` |
 | `src/app/pages/notFound.ts` | `notFoundRoute`: catch-all `*`, loader always throws `data()` 404 (`Component` is an empty function only to silence a React Router warning) |
 | `src/app/pages/{home,listing,search,swpeople}/` | One folder per page: `route.ts` + `slice.ts` + `Page.tsx` + `Page.module.scss` |
@@ -77,9 +77,14 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 | `src/app/modal/registry.ts` | `modalRegistry`: one literal `import()` with its own `webpackChunkName` per modal (never a dynamic specifier); `ModalId`, `ModalProps` |
 | `src/app/modal/ModalProvider.tsx` | `ModalProvider` / `useModal`: `open`, `close`, `prefetch`; imports nothing until `open` |
 | `src/app/modal/{LoginModal.tsx,LoginModal.module.scss}` | `LoginModal` (default export, chunk `modal-login`), carries `MODAL_MARKER` |
-| `src/app/footer/{Footer.tsx,Footer.module.scss}` | `Footer`: client-only placeholder with reserved height, `import()` of `FooterContent` when `useOnVisible` fires |
-| `src/app/footer/{FooterContent.tsx,FooterContent.module.scss}` | `FooterContent` (chunk `footer`), carries `FOOTER_MARKER` |
-| `src/app/lazy/useOnVisible.ts` | `useOnVisible` (IntersectionObserver, `rootMargin` 300px) |
+| `src/app/lazy/useOnVisible.ts` | `useOnVisible` (IntersectionObserver, `rootMargin` 300px). Currently unused: kept for future lazy-on-visible components |
+
+## Presentational components (`src/components/`)
+
+| Path | Role |
+| --- | --- |
+| `src/components/Header/{Header.tsx,Header.module.scss}` | `Header({brand, links, actions})`, type `HeaderLink`. Static, server-rendered, its CSS ships with main |
+| `src/components/Footer/{Footer.tsx,Footer.module.scss}` | `Footer({sections})`, types `FooterSection`, `FooterLink`. Static import, server-rendered, its CSS ships with main |
 
 ## Shared types and styles
 
@@ -108,6 +113,6 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 
 - Adding a page: `route.ts`, `slice.ts`, `Page.tsx` in `src/app/pages/<id>/`, plus `src/app/routes.ts`, `src/app/types.ts` (`pageType`), `src/store/types.ts` (`LazyLoadedSlices`), `src/services/types.ts` (`Services`), `src/services/inProcess.ts`, `src/services/browser.ts`, `src/server/api/router.ts`. Steps: `docs/GUIDA.md` §8.
 - The `webpackChunkName` of a route must match in the loader's `import('./slice.ts')`, in `lazy.Component` and in `handle.chunk`; the server links the assets of `handle.chunk` only.
-- A new lazy modal or footer-like chunk needs no registration: `build/check-bundle.ts` discovers it from the `import()` (literal specifier, non-`route-` chunk name). Export a `*_MARKER = '__X__'` constant from the module (see `src/app/modal/LoginModal.tsx`, `src/app/footer/FooterContent.tsx`) to add the string grep.
+- A new lazy chunk (modal or other) needs no registration: `build/check-bundle.ts` discovers it from the `import()` (literal specifier, non-`route-` chunk name). Export a `*_MARKER = '__X__'` constant from the module (see `src/app/modal/LoginModal.tsx`) to add the string grep.
 - `RequestCtx` never reaches the browser: only `PublicConfig` does, via `toPublicConfig` and `configSlice`.
 - Docs: `README.md` (decisions, verification), `docs/GUIDA.md` (Italian tutorial, repeats the folder tree and the webpack table).

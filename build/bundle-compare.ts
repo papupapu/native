@@ -12,7 +12,7 @@ import { dist, root } from './shared.ts';
  * The base side is built once per merge-base commit in a git worktree (`.bundle-baseline/`, removed
  * afterwards) and cached in `node_modules/.cache/bundle-guard/<sha>.json`.
  * Route growth is judged on the route's own chunk (shared growth is reported once, under "shared"),
- * the absolute budget on first-load JS (entry + route chunk). Lazy chunks (modal-*, footer) are
+ * the absolute budget on first-load JS (entry + route chunk). Lazy chunks (modal-*) are
  * reported but not judged: they are not first load.
  *
  * Usage: node build/bundle-compare.ts [--base=origin/master] [--modules] [--json] [--rebuild-base] [--allow-stale]

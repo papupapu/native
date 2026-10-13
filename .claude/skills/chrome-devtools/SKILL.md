@@ -32,13 +32,13 @@ Use `take_screenshot` only for visual checks — images cost far more context th
 - **Server HTML vs hydrated DOM.** `curl -s <url>` shows what the server sent (status, critical `<style data-critical>`, `__INITIAL_STATE__`); the snapshot shows the DOM after hydration. Content only in the snapshot is client-rendered: a problem for LCP and SEO if it is above the fold.
 - **Hydration errors.** `list_console_messages` right after `navigate_page`: look for hydration mismatch warnings (dev build only) and `[router] error`. In production, recoverable errors land in `window.__recoverableErrors`.
 - **Serialized state.** `evaluate_script` `() => Object.keys(window.__INITIAL_STATE__)` must list `config` plus only the slices of the route.
-- **Client navigation vs full load.** Click a link (no reload): the network list should show a `/api/v1/…` request, not a document. Lazy chunks (`modal-login`, `footer`) must appear in `list_network_requests` only after the interaction or scroll that needs them.
+- **Client navigation vs full load.** Click a link (no reload): the network list should show a `/api/v1/…` request, not a document. Lazy chunks (`modal-login`) must appear in `list_network_requests` only after the interaction or scroll that needs them.
 - **Chunks per route.** On first load the network list should hold vendor, main and the route chunk (`route-*`) only.
 
 ## Gotchas
 
 - Act by snapshot `uid`, not CSS selectors. Match buttons by visible text.
-- Re-snapshot after each step: the footer renders only after `useOnVisible` fires (scroll to it), the login modal only after the click.
+- Re-snapshot after each step: the login modal renders only after the click (header and footer are in the server HTML).
 - React-controlled inputs: prefer `fill`; if the value doesn't stick, set it through the native setter + `input` event in `evaluate_script`.
 - `evaluate_script` takes a function: `() => { ... }`.
 - Console/network: `list_console_messages`, `list_network_requests` → then `get_*` for one item only.

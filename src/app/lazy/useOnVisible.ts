@@ -3,7 +3,7 @@ import type { RefObject } from 'react';
 
 /**
  * Calls `onVisible` once, when the element gets within `rootMargin` of the viewport.
- * Without IntersectionObserver it fires right away (progressive enhancement, no broken footer).
+ * Without IntersectionObserver it fires right away (progressive enhancement, no broken lazy part).
  */
 export function useOnVisible(ref: RefObject<Element | null>, onVisible: () => void, rootMargin = '300px') {
   useEffect(() => {

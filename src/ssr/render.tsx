@@ -70,9 +70,10 @@ async function render(req: IncomingMessage, res: ServerResponse, ctx: RequestCtx
   const leaf = result.matches[result.matches.length - 1];
   const chunk = (leaf?.route.handle as RouteHandle | undefined)?.chunk;
   const assets = pickAssets(options.manifest, chunk);
-  const inlineCss = ['main', chunk]
-    .map((name) => (name ? options.criticalCss[name] : undefined))
-    .filter((css): css is string => Boolean(css));
+  const inlineCss = ['main', chunk].flatMap((name) => (name ? (options.criticalCss[name] ?? []) : []));
+  // Inlined files are not linked too: a blocking <link> would make the inline copy pointless.
+  const inlinedHrefs = new Set(inlineCss.map((file) => file.href));
+  const linkedCss = assets.css.filter((href) => !inlinedHrefs.has(href));
 
   // Status is decided here, before the first byte is flushed.
   const status = result.statusCode;
@@ -86,7 +87,7 @@ async function render(req: IncomingMessage, res: ServerResponse, ctx: RequestCtx
 
   await new Promise<void>((resolve, reject) => {
     const stream = renderToPipeableStream(
-      <Document lang={ctx.locale} css={assets.css} inlineCss={inlineCss}>
+      <Document lang={ctx.locale} css={linkedCss} inlineCss={inlineCss}>
         <Provider store={store}>
           <StaticRouterProvider router={router} context={result} hydrate={false} />
         </Provider>

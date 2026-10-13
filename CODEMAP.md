@@ -14,14 +14,14 @@ Checked by `node scripts/check-ai-docs.mjs` (paths exist, backticked symbols app
 | `src/server/middleware/{context,headers,seoRedirect,errors}.ts` | `requestContext` (builds `RequestCtx`: locale, bot detection, base URL, cookies, into `res.locals`), `securityHeaders`, `seoRedirect` (table of 301s, `REDIRECTS`), `errorHandler` (500 page, `res.destroy` when headers are already sent) |
 | `src/server/api/router.ts` | `apiRouter`: `/api/v1/{home,search,listings/:id,swpeople/:id}`, what the browser services call on client navigations; backed by `createInProcessServices` |
 | `src/server/ssr/renderer.ts` | `createRendererLoader`: loads `dist/server/render.cjs` and, in dev, reloads it when its mtime changes |
-| `src/server/ssr/assets.ts` | `readManifest` (`dist/client/manifest.json`), `readCriticalCss` (CSS of `main` and every `route-*` group, read once at boot) |
+| `src/server/ssr/assets.ts` | `readManifest` (`dist/client/manifest.json`), `readCriticalCss` (CSS of `main` and every `route-*` group as `InlineCss[]` with its public href, read once at boot; `console.warn` when `main` + a route exceed `CRITICAL_CSS_BUDGET`, 14 KB) |
 
 ## SSR (`src/ssr/`, bundled by webpack into `dist/server/render.cjs`)
 
 | Path | Role |
 | --- | --- |
-| `src/ssr/render.tsx` | `render`: `createStaticHandler(routes).query` → redirect passthrough → status from `result.statusCode` → `renderToPipeableStream` (`onShellReady` browsers, `onAllReady` bots, `ABORT_AFTER_MS`). Serializes only `config` + the slices named in `handle.slices` of the matched routes. Logs `[ssr] loader error` for non-`data()` errors |
-| `src/ssr/Document.tsx` | `Document`: `<html>` / `<head>` (stylesheets, inline critical CSS) / `<div id="root">`. Server only |
+| `src/ssr/render.tsx` | `render`: `createStaticHandler(routes).query` → redirect passthrough → status from `result.statusCode` → `renderToPipeableStream` (`onShellReady` browsers, `onAllReady` bots, `ABORT_AFTER_MS`). Inlines the critical CSS of `main` + the route chunk and links only the other `assets.css` files (`inlineCss` / `linkedCss`). Serializes only `config` + the slices named in `handle.slices` of the matched routes. Logs `[ssr] loader error` for non-`data()` errors |
+| `src/ssr/Document.tsx` | `Document`: `<html>` / `<head>` (`<style data-critical data-href>` for inlined CSS, `<link>` for the rest; the `data-href` is what the mini-css-extract runtime looks up to skip the download) / `<div id="root">`. Server only |
 | `src/ssr/serialize.ts` | `serializeForScript` (safe for inline `<script>`), `toHydrationData` (router data; unexpected errors become a generic 500 without message) |
 
 ## Client (`src/client/`)
@@ -85,7 +85,7 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 
 | Path | Role |
 | --- | --- |
-| `src/shared/types.ts` | `RequestCtx` (server only), `PublicConfig` + `toPublicConfig` (the whitelist that reaches the browser), `RenderModule` / `RenderOptions` (contract between Express and the SSR bundle) |
+| `src/shared/types.ts` | `RequestCtx` (server only), `PublicConfig` + `toPublicConfig` (the whitelist that reaches the browser), `InlineCss` (`{href, rules}` of one inlined stylesheet), `RenderModule` / `RenderOptions` (contract between Express and the SSR bundle) |
 | `src/shared/manifest.ts` | `AssetManifest`: `entry` (vendor + main) and `groups` keyed by chunk name |
 | `src/globals.d.ts` | `__DEV__`, CSS-module typings, `window.__INITIAL_STATE__` / `__ROUTER_DATA__` / `__recoverableErrors` |
 | `src/styles/_tokens.scss` | Fake design tokens, injected into every `.scss` by `additionalData` in `build/shared.ts` |

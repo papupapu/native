@@ -36,6 +36,6 @@ export function createInProcessServices(latencyMs = 50): Services {
         if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
         return (await res.json()) as SwPeople;
       }
-    }
+    },
   };
 }

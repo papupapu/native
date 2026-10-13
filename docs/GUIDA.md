@@ -321,12 +321,12 @@ Il percorso dei dati ha 5 anelli. Ognuno ha un solo compito:
 ### 1) `services/`: da dove vengono i dati
 
 [`src/services/types.ts`](../src/services/types.ts) definisce il contratto `Services`
-(`home.fetch()`, `listing.fetch(id)`, `search.fetch(query)`). Ci sono due implementazioni:
+(`home.fetch()`, `listing.fetch(id)`, `search.fetch(query)`, `swpeople.fetch(id)`). Ci sono due implementazioni:
 
 | | `inProcess.ts` | `browser.ts` |
 | --- | --- | --- |
 | Usata da | server (SSR) e dall'API Express | browser |
-| Come ottiene i dati | direttamente (qui: fixture + 50 ms di ritardo finto) | `fetch('/api/v1/...')` |
+| Come ottiene i dati | direttamente (qui: fixture + 50 ms di ritardo finto; `swpeople` chiama `https://swapi.dev/api`, timeout 5 s) | `fetch('/api/v1/...')` |
 
 Lo **stesso** `inProcess.ts` è usato anche da `src/server/api/router.ts`, quindi il server e
 l'endpoint che chiama il browser rispondono con gli stessi dati. Il server **non** si richiama via HTTP

@@ -47,5 +47,5 @@ export interface Services {
   home: { fetch(): Promise<HomeData> };
   listing: { fetch(id: string): Promise<Listing | null> };
   search: { fetch(query: string): Promise<SearchResult> };
-  swpeople: { fetch(id: string ): Promise<SwPeople | null> };
+  swpeople: { fetch(id: string): Promise<SwPeople | null> };
 }

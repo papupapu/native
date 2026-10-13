@@ -62,7 +62,9 @@ portal/
 │   ├── AssetManifestPlugin.ts  produce manifest.json: "quali file servono a quale pagina"
 │   ├── build.ts                `npm run build`
 │   ├── dev.ts                  `npm run dev`
-│   └── check-bundle.ts         `npm run check:bundle`: controlla che modale/footer non finiscano nel bundle iniziale
+│   ├── check-bundle.ts         `npm run check:bundle`: controlla che le parti lazy (modale, footer, ...) non finiscano nel bundle iniziale
+│   ├── bundle-compare.ts       `npm run bundle:compare`: peso del JS di primo caricamento per route, confrontato col merge-base
+│   └── bundle-budget.json      soglie (delta e assolute) usate da bundle-compare.ts
 ├── src/
 │   ├── server/               Express (gira direttamente in Node, NON passa da webpack)
 │   │   ├── boot.ts             avvio in produzione: config → warm-up → listen → shutdown
@@ -751,8 +753,9 @@ Cosa tenere d'occhio quando le pagine passano da 3 a 30 e i team da 1 a 5.
 
 - **Il bundle iniziale deve restare piccolo:** `main` e `vendor` contengono solo ciò che serve a ogni
   pagina. Ogni nuova libreria pesante va in un chunk lazy (modale, pagina, componente sotto la piega).
-- **`npm run check:bundle` in CI.** Fallisce se codice di modale o footer finisce nel bundle iniziale o nei chunk di route, o se manca un chunk lazy atteso (`modal-login`, `footer-*`): è
+- **`npm run check:bundle` in CI.** Fallisce se una parte lazy (modale, footer, qualsiasi `import()` con `webpackChunkName` non `route-`) finisce nel bundle iniziale o nei chunk di route, o se il suo chunk manca: è
   il modo più economico per accorgersi di una regressione.
+- **`npm run bundle:compare` prima di una PR** (dopo `build`). Misura il JS gzip di primo caricamento per route e lo confronta col merge-base con master (la baseline si compila una volta in un git worktree `.bundle-baseline/` e resta in cache in `node_modules/.cache/bundle-guard/`). Le soglie sono in `build/bundle-budget.json`. Exit 0 ok o avvisi, 1 BLOCKER, 2 non misurabile. Opzioni: `--modules`, `--json`, `--base=<ref>`, `--rebuild-base`, `--allow-stale`.
 - **Import dinamici sempre con stringa letterale** (vedi `modal/registry.ts`). Con un template literal
   webpack include tutti i file della cartella.
 - **Mai una cacheGroup `common` con `chunks: 'all'`** in `splitChunks` (è il problema di portal18): riporta
@@ -791,10 +794,10 @@ navigazione client che torna sulla stessa route non riscaricano il CSS.
    `import(/* webpackChunkName: "gallery" */ './GalleryContent.tsx')` quando `useOnVisible` segnala che
    il segnaposto è vicino al viewport. Il `GalleryContent.module.scss` finisce nel chunk `gallery`,
    che si scarica (JS + CSS) solo allora.
-3. Aggiungi il chunk a `LAZY` in `build/check-bundle.ts` (`{ chunk: 'gallery', module: 'GalleryContent',
-   marker: '__GALLERY_CONTENT__' }`) ed esporta il marker nel componente, come `FOOTER_MARKER` in
-   `FooterContent.tsx`: così `npm run check:bundle` fallisce se un import statico lo riporta in `main` o
-   in `route-x`.
+3. Non serve registrare nulla: `npm run check:bundle` trova da solo ogni `import(/* webpackChunkName: "gallery" */ './GalleryContent.tsx')`
+   con chunk non `route-` e fallisce se un import statico lo riporta in `main` o in `route-x`. Per
+   aggiungere anche il controllo sulla stringa, esporta nel componente una costante `*_MARKER = '__GALLERY_CONTENT__'`,
+   come `FOOTER_MARKER` in `FooterContent.tsx`.
 4. Il segnaposto è renderizzato dal server: se la sezione conta per la SEO, questo pattern non va bene
    (il contenuto non è nell'HTML, vedi il footer).
 
@@ -877,6 +880,7 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 | `npm run dev` | server di sviluppo su `localhost:3000` (`PORT=…` per cambiarla): HMR dei componenti; le modifiche a `src/server` o `build` riavviano il processo. Attenzione: `src/services/*` aggiorna l'SSR ma **non** l'API `/api/v1` (Express la importa a tempo di avvio): dopo aver cambiato un service riavvia `npm run dev` |
 | `npm run build` | build di produzione in `dist/` |
 | `npm start` | server di produzione (richiede la build) |
-| `npm run check:bundle` | verifica che modale/footer siano fuori dal bundle iniziale |
+| `npm run check:bundle` | verifica che le parti lazy (modale, footer, ...) siano fuori dal bundle iniziale |
+| `npm run bundle:compare` | JS di primo caricamento per route vs merge-base, giudicato da `build/bundle-budget.json` (richiede la build) |
 | `npm run analyze` | build + `dist/bundle-report.html` |
 | `npm run typecheck` | `tsc --noEmit` |

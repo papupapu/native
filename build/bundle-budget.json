@@ -1,0 +1,5 @@
+{
+  "_comment": "Thresholds for build/bundle-compare.ts, kB gzip. delta = growth vs the merge-base with master; absolute = max first-load JS (vendor + main + route chunk) per route chunk name, 'default' for routes without an entry (about 10% above what master weighed when set). Raise a number only with a reason in the PR.",
+  "delta": { "routeWarnKb": 3, "routeBlockKb": 10, "sharedWarnKb": 2, "sharedBlockKb": 5 },
+  "absolute": { "default": 120 }
+}

@@ -16,6 +16,7 @@
     "start": "NODE_ENV=production node src/server/boot.ts",
     "typecheck": "tsc --noEmit",
     "check:bundle": "node build/check-bundle.ts",
+    "bundle:compare": "node build/bundle-compare.ts",
     "smoke": "node scripts/smoke.mjs --start",
     "analyze": "ANALYZE=1 node build/build.ts"
   },

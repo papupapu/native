@@ -98,14 +98,16 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 | `build/webpack.server.ts` | `createServerConfig`: entry `src/ssr/render.tsx` → `dist/server/render.cjs`, `splitChunks: false` |
 | `build/shared.ts` | `swcRule` (TS/JSX), `styleRule` (SCSS, CSS Modules, tokens via `additionalData`; `exportOnlyLocals` on the server), `root`, `dist` |
 | `build/AssetManifestPlugin.ts` | `AssetManifestPlugin`: writes `dist/client/manifest.json` (`entry` + one group per named chunk) |
-| `build/build.ts` | `npm run build`: compiles client + server, writes `dist/stats.json` |
+| `build/build.ts` | `npm run build`: compiles client + server, writes `dist/stats.json` (with module names: `modules`, `dependentModules`, `modulesSpace: Infinity`) |
 | `build/dev.ts` | `npm run dev`: webpack dev/hot middleware inside Express, server compiler in `watch()`; `src/server/**` and `build/**` edits restart the process |
-| `build/check-bundle.ts` | `npm run check:bundle`: `LAZY` lists the modules and markers that must stay out of main/vendor/route-* and inside `modal-login` / `footer` |
+| `build/check-bundle.ts` | `npm run check:bundle`: `discoverLazy` finds every `import(/* webpackChunkName: "x" */ './File.tsx')` in `src/` with a non-`route-` chunk name; that file must stay out of main/vendor/route-* and be inside its own non-initial chunk; an exported `*_MARKER` constant in the file also gets a string grep |
+| `build/bundle-compare.ts` | `npm run bundle:compare`: gzip first-load JS per `route-*` group (`dist/client/manifest.json`), shared, lazy chunks, per-module source size (`dist/stats.json`) vs the merge-base with master (`buildBaseline`: a temporary git worktree (gitignored), cached in `node_modules/.cache/bundle-guard/<sha>.json`); `judge` applies `build/bundle-budget.json`. Flags `--modules --json --base --rebuild-base --allow-stale`; exit 0 ok/warnings, 1 BLOCKER, 2 not measurable |
+| `build/bundle-budget.json` | Thresholds for `bundle-compare.ts`: `delta` (route/shared warn and block, kB) and `absolute` first-load JS per route chunk name, with `default` |
 
 ## Cross-cutting coupling
 
 - Adding a page: `route.ts`, `slice.ts`, `Page.tsx` in `src/app/pages/<id>/`, plus `src/app/routes.ts`, `src/app/types.ts` (`pageType`), `src/store/types.ts` (`LazyLoadedSlices`), `src/services/types.ts` (`Services`), `src/services/inProcess.ts`, `src/services/browser.ts`, `src/server/api/router.ts`. Steps: `docs/GUIDA.md` §8.
 - The `webpackChunkName` of a route must match in the loader's `import('./slice.ts')`, in `lazy.Component` and in `handle.chunk`; the server links the assets of `handle.chunk` only.
-- A new lazy modal or footer-like chunk needs its entry in `LAZY` in `build/check-bundle.ts`, or the leak check does not cover it.
+- A new lazy modal or footer-like chunk needs no registration: `build/check-bundle.ts` discovers it from the `import()` (literal specifier, non-`route-` chunk name). Export a `*_MARKER = '__X__'` constant from the module (see `src/app/modal/LoginModal.tsx`, `src/app/footer/FooterContent.tsx`) to add the string grep.
 - `RequestCtx` never reaches the browser: only `PublicConfig` does, via `toPublicConfig` and `configSlice`.
 - Docs: `README.md` (decisions, verification), `docs/GUIDA.md` (Italian tutorial, repeats the folder tree and the webpack table).

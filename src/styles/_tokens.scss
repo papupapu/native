@@ -9,6 +9,10 @@ $color-border: #cbd2d9;
 $color-brand: #0b6bcb;
 $color-brand-contrast: #ffffff;
 $color-danger: #b3261e;
+// Interaction states (hover). Not in the `$colors` map: no utility class needs them.
+$color-brand-dark: #084d93;
+$color-grey-light: #e4e7eb;
+$color-grey-dark: #7b8794;
 
 $space-1: 4px;
 $space-2: 8px;
@@ -24,3 +28,19 @@ $font-size-body: 16px;
 $font-size-title: 28px;
 $font-size-small: 14px;
 $page-width: 960px;
+
+// Maps for the utility-class generator (`utilities.scss`). They emit no CSS. Keys are the
+// class-name suffixes: `.p-3`, `.color-text-muted`, `.fs-small`, `.rounded-1`.
+$spacers: (0: 0, 1: $space-1, 2: $space-2, 3: $space-3, 4: $space-4, 5: $space-5);
+$colors: (
+  'text': $color-text,
+  'text-muted': $color-text-muted,
+  'surface': $color-surface,
+  'surface-alt': $color-surface-alt,
+  'border': $color-border,
+  'brand': $color-brand,
+  'brand-contrast': $color-brand-contrast,
+  'danger': $color-danger,
+);
+$font-sizes: ('body': $font-size-body, 'title': $font-size-title, 'small': $font-size-small);
+$radii: (1: $radius-1, 2: $radius-2);

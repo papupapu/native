@@ -37,10 +37,10 @@ Checked by `node scripts/check-ai-docs.mjs` (paths exist, backticked symbols app
 | --- | --- |
 | `src/app/routes.ts` | `routes`: `root` (`AppShell`) → pathless `content` (holds `RouteErrorBoundary`) → the page routes |
 | `src/app/types.ts` | `RouteHandle`: `pageType`, `chunk` (the server links its assets) and `slices` (the only ones serialized) |
-| `src/app/{AppShell.tsx,AppShell.module.scss,global.scss}` | `AppShell`: `Header` (data `HEADER_LINKS`), `<Outlet/>`, `Footer` (data `FOOTER_SECTIONS`), `ModalProvider`; `LoginButton` opens/prefetches the `login` modal |
+| `src/app/{AppShell.tsx,AppShell.module.scss,global.scss}` | `AppShell`: `Header` (data `HEADER_LINKS`), `<Outlet/>`, `Footer` (data `FOOTER_SECTIONS`), `ModalProvider`; `LoginButton` renders `Button` (primary variant) and opens/prefetches the `login` modal (`onPointerEnter` / `onFocus`). The only importer of `src/styles/utilities.scss` (right after `global.scss`). The module keeps only `.shell` (min-height); the rest is utility classes |
 | `src/app/RouteErrorBoundary.tsx` | `RouteErrorBoundary`: 404/500 content rendered inside the shell, with `noindex` |
 | `src/app/pages/notFound.ts` | `notFoundRoute`: catch-all `*`, loader always throws `data()` 404 (`Component` is an empty function only to silence a React Router warning) |
-| `src/app/pages/{home,listing,search,swpeople}/` | One folder per page: `route.ts` + `slice.ts` + `Page.tsx` + `Page.module.scss` |
+| `src/app/pages/{home,listing,search,swpeople}/` | One folder per page: `route.ts` + `slice.ts` + `Page.tsx`. Styling is utility classes in the `className`; `home` and `listing` keep a tiny `Page.module.scss` (`.cards` grid template, `.cardTitle` / `.price` font sizes), `search` and `swpeople` have none |
 
 | URL | Route id | Chunk | Slice / thunk | Status |
 | --- | --- | --- | --- | --- |
@@ -76,15 +76,17 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 | --- | --- |
 | `src/app/modal/registry.ts` | `modalRegistry`: one literal `import()` with its own `webpackChunkName` per modal (never a dynamic specifier); `ModalId`, `ModalProps` |
 | `src/app/modal/ModalProvider.tsx` | `ModalProvider` / `useModal`: `open`, `close`, `prefetch`; imports nothing until `open` |
-| `src/app/modal/{LoginModal.tsx,LoginModal.module.scss}` | `LoginModal` (default export, chunk `modal-login`), carries `MODAL_MARKER` |
+| `src/app/modal/{LoginModal.tsx,LoginModal.module.scss}` | `LoginModal` (default export, chunk `modal-login`), carries `MODAL_MARKER`. The module keeps only `.overlay` and `.dialog` (width); the rest is utility classes already loaded with the main chunk |
 | `src/app/lazy/useOnVisible.ts` | `useOnVisible` (IntersectionObserver, `rootMargin` 300px). Currently unused: kept for future lazy-on-visible components |
 
 ## Presentational components (`src/components/`)
 
 | Path | Role |
 | --- | --- |
-| `src/components/Header/{Header.tsx,Header.module.scss}` | `Header({brand, links, actions})`, type `HeaderLink`. Static, server-rendered, its CSS ships with main |
-| `src/components/Footer/{Footer.tsx,Footer.module.scss}` | `Footer({sections})`, types `FooterSection`, `FooterLink`. Static import, server-rendered, its CSS ships with main |
+| `src/components/Header/{Header.tsx,Header.module.scss}` | `Header({brand, links, actions})`, type `HeaderLink`. Static, server-rendered, its CSS ships with main. Layout comes from utility classes; the module only has `.brand` (font size) |
+| `src/components/Footer/Footer.tsx` | `Footer({sections})`, types `FooterSection`, `FooterLink`. Static import, server-rendered. Utility classes only, no module |
+| `src/components/Button/Button.tsx` | `Button`: `variant` (`VARIANTS` map of utility classes: `primary`, `secondary`, `ghost`), optional `size` (`SIZES` map of utility classes for padding, gap and font size: `lg` default = `py-2 px-3 gap-2 fs-body`, `sm` = `py-1 px-2 gap-1 fs-small`), `action`, `label` / `children`, `iconLeft` / `iconRight`, optional `onPointerEnter` / `onFocus` (passed through to the native button). Used by `LoginButton` in `src/app/AppShell.tsx`. |
+| `src/components/Button/Button.module.scss` | Only what has no utility: `.button` font-family and cursor, `.icon svg` sizing, and the states (utilities have no pseudo-class variants): `.button` `:focus` / `:active` outlines, `.primary`, `.secondary`, `.ghost` `:hover` colors. `Button.tsx` adds the per-variant module class next to the `VARIANTS` utilities; the state rule overrides the resting utility on purpose (more specific) |
 
 ## Shared types and styles
 
@@ -93,7 +95,8 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 | `src/shared/types.ts` | `RequestCtx` (server only), `PublicConfig` + `toPublicConfig` (the whitelist that reaches the browser), `InlineCss` (`{href, rules}` of one inlined stylesheet), `RenderModule` / `RenderOptions` (contract between Express and the SSR bundle) |
 | `src/shared/manifest.ts` | `AssetManifest`: `entry` (vendor + main) and `groups` keyed by chunk name |
 | `src/globals.d.ts` | `__DEV__`, CSS-module typings, `window.__INITIAL_STATE__` / `__ROUTER_DATA__` / `__recoverableErrors` |
-| `src/styles/_tokens.scss` | Fake design tokens, injected into every `.scss` by `additionalData` in `build/shared.ts` |
+| `src/styles/_tokens.scss` | Fake design tokens, injected into every `.scss` by `additionalData` in `build/shared.ts`. Variables and the Sass maps `$spacers`, `$colors`, `$font-sizes`, `$radii` (no CSS emitted; keys are the class-name suffixes of the utilities). `$color-brand-dark`, `$color-grey-light`, `$color-grey-dark` are hover-state colors kept out of `$colors` (no utility class uses them; only `Button.module.scss`) |
+| `src/styles/utilities.scss` | Global (non-module, unhashed) utility classes generated with `@each` from the token maps: `p*`/`m*`/`gap-0..5`, `color-`/`bg-`/`border-color-<token>`, the two hand-written non-token exceptions `bg-transparent` (after the `bg-` loop) and `border-color-transparent` (after the `border-color-` loop), `border*`, `fs-*`, `rounded-*`, layout helpers. No responsive variants. Emitted general to specific (`m-0` before `mb-2`; `border-color-*` after `border*`). Imported only by `src/app/AppShell.tsx`, so it ships once in `main` |
 
 ## Build (`build/`)
 
@@ -115,4 +118,5 @@ Each `route.ts` has a tiny static loader: it `await import()`s its own `slice.ts
 - The `webpackChunkName` of a route must match in the loader's `import('./slice.ts')`, in `lazy.Component` and in `handle.chunk`; the server links the assets of `handle.chunk` only.
 - A new lazy chunk (modal or other) needs no registration: `build/check-bundle.ts` discovers it from the `import()` (literal specifier, non-`route-` chunk name). Export a `*_MARKER = '__X__'` constant from the module (see `src/app/modal/LoginModal.tsx`) to add the string grep.
 - `RequestCtx` never reaches the browser: only `PublicConfig` does, via `toPublicConfig` and `configSlice`.
+- Utility classes: a CSS property comes from a utility or from the component module, never both on the same element (route CSS is inlined after `main`, so a module wins at equal specificity). Exception: states and pseudo-classes (`:hover`, `:focus`, `:active`) live in the module and override the resting utility on purpose (see `src/components/Button/Button.module.scss`). Import `src/styles/utilities.scss` only from `src/app/AppShell.tsx`: from a page or component it would be duplicated in every route CSS. A new token that needs a class goes in a map of `src/styles/_tokens.scss`.
 - Docs: `README.md` (decisions, verification), `docs/GUIDA.md` (Italian tutorial, repeats the folder tree and the webpack table).

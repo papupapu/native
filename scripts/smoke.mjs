@@ -52,6 +52,8 @@ const stateKeys = (html) => {
 // Critical CSS: `<style data-critical data-href="/static/x.css">` (inlined) vs `<link rel="stylesheet" href>` (linked).
 const inlinedCss = (html) => [...html.matchAll(/<style[^>]*data-critical[^>]*data-href="([^"]+)"/g)].map((m) => m[1]);
 const linkedCss = (html) => [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+// Content of the inlined `<style data-critical>` whose file name starts with `name` ('main', 'route-home').
+const inlinedRules = (html, name) => html.match(new RegExp(`<style[^>]*data-critical[^>]*data-href="[^"]*/${name}[."][^>]*>([^]*?)</style>`))?.[1] ?? '';
 const cssNames = (hrefs) => hrefs.map((href) => path.basename(href).split('.')[0]).join(',');
 
 let failed = 0, total = 0;
@@ -73,6 +75,9 @@ async function run() {
   // Critical CSS: main + the route are inlined and not linked; modal CSS never in the page.
   check('/ inlines the CSS of main and route-home', cssNames(inlinedCss(home.body)) === 'main,route-home', cssNames(inlinedCss(home.body)));
   check('/ links no stylesheet at all (everything needed is inlined)', linkedCss(home.body).length === 0, linkedCss(home.body).join(' '));
+  // Utility classes (`src/styles/utilities.scss`) ship once, in main: a route that imports them would repeat them.
+  check('/ main CSS has the utility classes', inlinedRules(home.body, 'main').includes('.p-3{'));
+  check('/ route-home CSS does not repeat the utility classes', inlinedRules(home.body, 'route-home').length > 0 && !inlinedRules(home.body, 'route-home').includes('.p-3{'));
   check('/ has no modal CSS', !/modal-login/.test([...inlinedCss(home.body), ...linkedCss(home.body)].join(' ')));
   // The webpack CSS runtime skips a chunk's CSS when a <style data-href> with its URL exists: without it the inlined files would be fetched again.
   const mainScript = scripts.find((src) => path.basename(src).startsWith('main'));

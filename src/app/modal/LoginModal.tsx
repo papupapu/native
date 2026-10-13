@@ -13,25 +13,25 @@ export default function LoginModal({ onClose }: ModalProps) {
   }, [onClose]);
 
   return (
-    <div className={styles['overlay']} onClick={onClose} data-modal={MODAL_MARKER}>
+    <div className={`${styles['overlay']} flex items-center justify-center`} onClick={onClose} data-modal={MODAL_MARKER}>
       <div
-        className={styles['dialog']}
+        className={`${styles['dialog']} p-4 rounded-2 bg-surface`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="login-title">Accedi</h2>
+        <h2 className="m-0 mb-3" id="login-title">Accedi</h2>
         <form onSubmit={(event) => event.preventDefault()}>
-          <label>
+          <label className="block mb-3 fs-small">
             Email
-            <input type="email" name="email" autoComplete="username" autoFocus />
+            <input className="block w-full mt-1 p-2 border rounded-1" type="email" name="email" autoComplete="username" autoFocus />
           </label>
-          <label>
+          <label className="block mb-3 fs-small">
             Password
-            <input type="password" name="password" autoComplete="current-password" />
+            <input className="block w-full mt-1 p-2 border rounded-1" type="password" name="password" autoComplete="current-password" />
           </label>
-          <div className={styles['actions']}>
+          <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose}>
               Annulla
             </button>

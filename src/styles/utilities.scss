@@ -1,0 +1,140 @@
+// Utility classes generated from the tokens. Global (not a CSS Module): class names are not
+// hashed. Imported only by AppShell, so they ship once in `main`. Rule: a property comes from
+// a utility or from the component module, never both on the same element.
+
+// Spacing: p / m, then the side. `mx-auto` is added by hand below.
+$sides: (
+  '': (''),
+  'x': ('-left', '-right'),
+  'y': ('-top', '-bottom'),
+  't': ('-top'),
+  'r': ('-right'),
+  'b': ('-bottom'),
+  'l': ('-left'),
+);
+
+@each $prefix, $property in ('p': 'padding', 'm': 'margin') {
+  @each $side, $suffixes in $sides {
+    @each $step, $value in $spacers {
+      .#{$prefix}#{$side}-#{$step} {
+        @each $suffix in $suffixes {
+          #{$property}#{$suffix}: $value;
+        }
+      }
+    }
+  }
+}
+
+.mx-auto {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@each $step, $value in $spacers {
+  .gap-#{$step} {
+    gap: $value;
+  }
+}
+
+// Colors
+@each $name, $value in $colors {
+  .color-#{$name} {
+    color: $value;
+  }
+  .bg-#{$name} {
+    background: $value;
+  }
+}
+
+.bg-transparent {
+  background: transparent;
+}
+
+// Borders: width/style first, `border-color-*` after so it wins at equal specificity.
+.border {
+  border: 1px solid $color-border;
+}
+.border-t {
+  border-top: 1px solid $color-border;
+}
+.border-b {
+  border-bottom: 1px solid $color-border;
+}
+
+@each $name, $value in $colors {
+  .border-color-#{$name} {
+    border-color: $value;
+  }
+}
+
+.border-color-transparent {
+  border-color: transparent;
+}
+
+// Typography and radius
+@each $name, $value in $font-sizes {
+  .fs-#{$name} {
+    font-size: $value;
+  }
+}
+
+.fw-bold {
+  font-weight: 700;
+}
+
+.no-underline {
+  text-decoration: none;
+}
+
+@each $step, $value in $radii {
+  .rounded-#{$step} {
+    border-radius: $value;
+  }
+}
+
+// Layout
+.block {
+  display: block;
+}
+.flex {
+  display: flex;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.grid {
+  display: grid;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-1 {
+  flex: 1;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}
+.items-center {
+  align-items: center;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.w-full {
+  width: 100%;
+}
+.max-w-page {
+  max-width: $page-width;
+}
+.list-none {
+  list-style: none;
+}

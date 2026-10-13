@@ -13,11 +13,11 @@ type HeaderProps = {
 
 export function Header({ brand, links, actions }: HeaderProps) {
   return (
-    <header className={styles['header']}>
-      <Link to="/" className={styles['brand']}>
+    <header className="flex items-center justify-between gap-3 p-3 border-b bg-surface">
+      <Link to="/" className={`${styles['brand']} color-brand fw-bold no-underline`}>
         {brand}
       </Link>
-      <nav className={styles['nav']}>
+      <nav className="flex flex-wrap gap-3 fs-small">
         {links.map((link) => (
           <Link key={link.to} to={link.to} reloadDocument={link.reloadDocument}>
             {link.label}

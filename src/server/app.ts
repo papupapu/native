@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import type { Express } from 'express';
 import type { AssetManifest } from '../shared/manifest.ts';
-import type { RenderModule, RequestCtx } from '../shared/types.ts';
+import type { InlineCss, RenderModule, RequestCtx } from '../shared/types.ts';
 import { apiRouter } from './api/router.ts';
 import { requestContext } from './middleware/context.ts';
 import { errorHandler } from './middleware/errors.ts';
@@ -14,7 +14,7 @@ export interface AppDeps {
   distDir: string;
   getRenderModule(): RenderModule;
   getManifest(): AssetManifest;
-  getCriticalCss(): Record<string, string>;
+  getCriticalCss(): Record<string, InlineCss[]>;
   /** Dev only: mounts webpack-dev-middleware / hot-middleware instead of serving `dist/client`. */
   mountAssets?(app: Express): void;
 }

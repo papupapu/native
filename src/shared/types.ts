@@ -23,10 +23,16 @@ export function toPublicConfig(ctx: RequestCtx): PublicConfig {
   return { domain: ctx.domain, locale: ctx.locale, baseUrl: ctx.baseUrl };
 }
 
+/** One stylesheet inlined in <head>: `href` is its public URL, the key the webpack CSS runtime looks up. */
+export interface InlineCss {
+  href: string;
+  rules: string;
+}
+
 export interface RenderOptions {
   manifest: AssetManifest;
-  /** CSS inlined in <head>, keyed by chunk group name (`main`, `route-home`, ...). */
-  criticalCss: Record<string, string>;
+  /** CSS inlined in <head> (and therefore not linked), keyed by chunk group name (`main`, `route-home`, ...). */
+  criticalCss: Record<string, InlineCss[]>;
 }
 
 /** Contract between Express (runs under Node type stripping) and the webpack-built SSR bundle. */

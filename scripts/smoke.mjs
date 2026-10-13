@@ -49,6 +49,11 @@ const stateKeys = (html) => {
   return m ? Object.keys(JSON.parse(m[1])).sort().join(',') : null;
 };
 
+// Critical CSS: `<style data-critical data-href="/static/x.css">` (inlined) vs `<link rel="stylesheet" href>` (linked).
+const inlinedCss = (html) => [...html.matchAll(/<style[^>]*data-critical[^>]*data-href="([^"]+)"/g)].map((m) => m[1]);
+const linkedCss = (html) => [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+const cssNames = (hrefs) => hrefs.map((href) => path.basename(href).split('.')[0]).join(',');
+
 let failed = 0, total = 0;
 const check = (name, ok, detail = '') => {
   total++;
@@ -64,7 +69,19 @@ async function run() {
   const scripts = [...home.body.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
   check('/ loads only vendor, main and route scripts', scripts.length > 0 && !scripts.some((s) => /modal|footer/.test(s)), scripts.join(' '));
 
+  // Critical CSS: main + the route are inlined and not linked; modal/footer CSS never in the page.
+  check('/ inlines the CSS of main and route-home', cssNames(inlinedCss(home.body)) === 'main,route-home', cssNames(inlinedCss(home.body)));
+  check('/ links no stylesheet at all (everything needed is inlined)', linkedCss(home.body).length === 0, linkedCss(home.body).join(' '));
+  check('/ has no modal or footer CSS', !/modal-login|footer/.test([...inlinedCss(home.body), ...linkedCss(home.body)].join(' ')));
+  // The webpack CSS runtime skips a chunk's CSS when a <style data-href> with its URL exists: without it the inlined files would be fetched again.
+  const mainScript = scripts.find((src) => path.basename(src).startsWith('main'));
+  const mainJs = mainScript ? await get(mainScript) : null;
+  check('main.js CSS runtime looks up <style data-href>', Boolean(mainJs?.body.includes('data-href')), mainScript ?? 'no main script');
+
   const listing = await get('/annunci/1');
+  check('/annunci/1 inlines main + route-listing only', cssNames(inlinedCss(listing.body)) === 'main,route-listing', cssNames(inlinedCss(listing.body)));
+  const notFound = await get('/non-esiste');
+  check('/non-esiste (no route chunk) inlines main only', cssNames(inlinedCss(notFound.body)) === 'main', cssNames(inlinedCss(notFound.body)));
   check('/annunci/1 200 with the listing', listing.status === 200 && listing.body.includes('Trilocale luminoso in centro'), `status ${listing.status}`);
   check('/annunci/1 serializes only config + listing', stateKeys(listing.body) === 'config,listing', stateKeys(listing.body));
   check('/annunci/999 404', (await get('/annunci/999')).status === 404);

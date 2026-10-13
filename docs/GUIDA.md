@@ -212,8 +212,9 @@ Dettagli utili:
   "shell" è pronta (`onShellReady`), con il resto in streaming.
 - Nello stato serializzato finiscono solo `config` e le slice **delle route che hanno matchato**
   (`handle.slices`). I cookie non ci arrivano mai.
-- In produzione il CSS di `main` e della route è anche **inlinato** nell'`<head>` (CSS critico) per
-  evitare il flash di contenuto senza stile.
+- In produzione il CSS di `main` e della route è **inlinato** nell'`<head>` (CSS critico) invece di
+  essere linkato: il primo paint non aspetta nessun `.css`. Dettagli ed esempio in
+  [§10, "CSS critico"](#css-critico-come-funziona-e-come-usarlo).
 
 ### 5.2 Nel browser: avvio e hydration (`src/client/entry.tsx`)
 
@@ -757,6 +758,67 @@ Cosa tenere d'occhio quando le pagine passano da 3 a 30 e i team da 1 a 5.
 - **Mai una cacheGroup `common` con `chunks: 'all'`** in `splitChunks` (è il problema di portal18): riporta
   codice lazy nel bundle iniziale.
 - **`npm run analyze`** per vedere cosa pesa.
+
+#### CSS critico: come funziona e come usarlo
+
+**Cosa succede.** In produzione `readCriticalCss` (`src/server/ssr/assets.ts`) legge una volta all'avvio i
+file CSS di `main` e di ogni gruppo `route-*`. Per ogni richiesta `render.tsx` prende quelli di `main` e
+della route corrente e `Document.tsx` li scrive nell'`<head>` come
+`<style data-critical data-href="/static/route-home.<hash>.css">…</style>`. I file inlinati **non vengono
+linkati**: un `<link rel="stylesheet">` blocca il render e annullerebbe il vantaggio dell'inline. Gli
+altri file CSS della pagina (se ce ne sono) restano `<link>`.
+
+L'attributo `data-href` contiene l'URL pubblico del file. Il runtime di `mini-css-extract-plugin`, prima di
+scaricare il CSS di un chunk, cerca un `<link>` o uno `<style>` con quel `data-href`: se lo trova lo
+considera già caricato. Per questo l'hydration (`resolveLazyMatches` importa il chunk della route) e la
+navigazione client che torna sulla stessa route non riscaricano il CSS.
+
+**Cosa è inline e cosa no:**
+
+| Inline (CSS critico) | Non inline |
+| --- | --- |
+| `main`: `global.scss`, `AppShell.module.scss`, `Footer.module.scss` (il segnaposto) | `modal-login`: CSS di `LoginModal`, chunk lazy |
+| `route-<x>`: il `Page.module.scss` della pagina e di ciò che la pagina importa staticamente | `footer`: CSS di `FooterContent`, chunk lazy |
+
+**Esempio guidato: "la pagina X ha una sezione pesante sotto la piega (galleria, mappa)".**
+
+1. Se `pages/x/Page.tsx` importa `Gallery` in modo statico (`import { Gallery } from './Gallery.tsx'`),
+   il `Gallery.module.scss` entra nel chunk `route-x` e quindi nel CSS inlinato di ogni richiesta a `/x`,
+   anche se l'utente non scorre mai fin lì.
+2. Per tenerlo fuori, falla diventare un componente lazy con il suo `.module.scss`, come
+   `src/app/footer/Footer.tsx` → `FooterContent.tsx`: un wrapper leggero (importato staticamente, con
+   solo un segnaposto di altezza riservata nel suo `.module.scss`) che fa
+   `import(/* webpackChunkName: "gallery" */ './GalleryContent.tsx')` quando `useOnVisible` segnala che
+   il segnaposto è vicino al viewport. Il `GalleryContent.module.scss` finisce nel chunk `gallery`,
+   che si scarica (JS + CSS) solo allora.
+3. Aggiungi il chunk a `LAZY` in `build/check-bundle.ts` (`{ chunk: 'gallery', module: 'GalleryContent',
+   marker: '__GALLERY_CONTENT__' }`) ed esporta il marker nel componente, come `FOOTER_MARKER` in
+   `FooterContent.tsx`: così `npm run check:bundle` fallisce se un import statico lo riporta in `main` o
+   in `route-x`.
+4. Il segnaposto è renderizzato dal server: se la sezione conta per la SEO, questo pattern non va bene
+   (il contenuto non è nell'HTML, vedi il footer).
+
+**Budget.** Il CSS inlinato (`main` + una route) dovrebbe stare nei circa 14 KB del primo round trip TCP.
+`CRITICAL_CSS_BUDGET` in `assets.ts` vale 14 KB e, all'avvio, `readCriticalCss` scrive su `console.warn`
+(`[portal] critical CSS of "route-x" is … bytes`) per ogni route che lo supera. È solo un avviso: il boot
+non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
+
+**Compromessi.**
+
+- Il CSS inlinato non entra nella cache del browser: viene rispedito a ogni pagina HTML. Va bene finché è
+  piccolo (vedi il budget); oltre, conviene lasciarlo in un file linkato e cacheabile.
+- In sviluppo non c'è inline (`getCriticalCss` restituisce `{}`): ci sono solo i `<link>`, quindi il
+  comportamento del primo paint si verifica sulla build di produzione.
+
+**Come verificarlo.**
+
+1. `npm run build && npm run smoke`: i check sul CSS critico controllano che `/` inlini `main` e
+   `route-home` e non linki nessun foglio di stile, che non ci sia CSS di modale o footer, che
+   `/annunci/1` inlini `route-listing`, che `/non-esiste` inlini solo `main` e che `main*.js` contenga
+   `data-href` (se una versione futura del plugin perdesse la ricerca dello `<style>`, i file verrebbero
+   riscaricati in silenzio: lo smoke lo segnala).
+2. In DevTools > Network (`npm start`), al primo caricamento di `/` non c'è nessuna richiesta
+   `route-*.css` né `main*.css`.
 
 ### Stato e dati
 

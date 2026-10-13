@@ -65,6 +65,13 @@ $mobile: $breakpoint-md - 1px;
   }
 }
 
+// The title and the dialog take focus from code only (`tabindex="-1"`) as a reading starting point:
+// they are not controls, so no focus ring.
+.title:focus,
+.dialog:focus {
+  outline: none;
+}
+
 .body {
   min-height: 0;
   overflow-y: auto;

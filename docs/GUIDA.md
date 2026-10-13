@@ -680,10 +680,11 @@ Le props della shell (tutte opzionali tranne `children` e uno tra `title` e `ari
 | `footer` | nodo React | barra di azioni standard; assente se omesso |
 | `closeButton` | `true` (default) / `false` | la X sta nel header, o fluttua nell'angolo se non c'è il `title` |
 
-Cosa fa la shell per te: `<dialog>` nativo aperto con `showModal()` (top layer, focus trap, pagina dietro inerte),
-Escape e click sul backdrop chiudono, lo scroll della pagina è bloccato (`overflow: hidden` su `<html>`), animazioni
-di apertura e chiusura (`@keyframes` su `data-state`, disattivate con `prefers-reduced-motion`). Un elemento con
-`data-autofocus` riceve il focus iniziale. Per un bottone di submit nel footer, fuori dal `<form>`, usa
+Cosa fa la shell per te: `<dialog>` nativo aperto con `showModal()` (top layer, pagina dietro inerte),
+Tab e Shift+Tab ciclano dentro la modale (un `onKeyDown` esplicito: il Tab nativo uscirebbe verso la UI del browser), Escape e click sul backdrop chiudono, lo scroll della pagina è bloccato (`overflow: hidden` su `<html>`), animazioni
+di apertura e chiusura (`@keyframes` su `data-state`, disattivate con `prefers-reduced-motion`). Focus iniziale:
+l'elemento con `data-autofocus` (scelta del contenuto), altrimenti il titolo (`h2`), altrimenti il `<dialog>` stesso
+(senza `title`, con nome da `ariaLabel`). Per un bottone di submit nel footer, fuori dal `<form>`, usa
 `<Button type="submit" form={formId} ...>` con lo stesso `id` del form (vedi `LoginModal.tsx`).
 
 Ciclo di vita: `close()` imposta solo `closing` nello stato di `ModalProvider` (`{ id, closing } | null`); la shell

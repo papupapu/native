@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef } from 'react';
-import type { MouseEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import styles from './Modal.module.scss';
 import { Button } from '../Button/Button.tsx';
 import type { ModalProps } from '../../app/modal/registry.ts';
@@ -25,9 +25,14 @@ const CloseIcon = (
   </svg>
 );
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
- * Standard shell of every modal: native `<dialog>` (top layer, focus trap, inert page behind it),
- * optional header and footer, enter and exit animations. A modal renders its content inside it.
+ * Standard shell of every modal: native `<dialog>` (top layer, inert page behind it), a Tab that
+ * cycles inside it (the native one would leave through the browser UI), optional header and footer,
+ * enter and exit animations. A modal renders its content inside it.
+ * Initial focus: the content's `[data-autofocus]`, else the title, else the dialog itself.
  * Only the modal chunks import it, so it never reaches main/vendor/route.
  *
  * Lifecycle: the dialog opens on mount; `closing` (set by the provider through `onClose`) plays the
@@ -53,8 +58,11 @@ export function Modal({
     if (!dialog) return;
     // Strict Mode mounts twice on the same node: `showModal()` throws when already open.
     if (!dialog.open) dialog.showModal();
-    // `showModal()` focuses the first focusable element (the close button): move it to the content's pick.
-    dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    // `showModal()` focuses the first focusable element (the close button): move it to the content's
+    // pick, else to the title (or the dialog when it has none) so reading starts from the top.
+    const initial =
+      dialog.querySelector<HTMLElement>('[data-autofocus]') ?? dialog.querySelector<HTMLElement>('[data-title]') ?? dialog;
+    initial.focus();
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = 'hidden';
@@ -88,6 +96,27 @@ export function Modal({
     if (!inside) onClose();
   };
 
+  // The native Tab leaves the dialog through the browser UI: wrap it from the last element to the first
+  // (and back). The list is read on every press because the content can change.
+  const onKeyDown = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== 'Tab') return;
+    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.checkVisibility());
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) {
+      event.preventDefault();
+      return;
+    }
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !focusable.includes(active as HTMLElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   const close = closeButton && <Button variant="ghost" size="sm" ariaLabel="Chiudi" iconLeft={CloseIcon} action={onClose} />;
 
   return (
@@ -99,6 +128,8 @@ export function Modal({
       data-state={closing ? 'closing' : 'open'}
       aria-labelledby={title ? titleId : undefined}
       aria-label={title ? undefined : ariaLabel}
+      tabIndex={title ? undefined : -1}
+      onKeyDown={onKeyDown}
       onCancel={(event) => {
         // Escape: the native close would skip the exit animation.
         event.preventDefault();
@@ -109,7 +140,7 @@ export function Modal({
     >
       {title ? (
         <header className="flex items-center justify-between gap-2 px-4 py-3 border-b">
-          <h2 className="m-0 fs-body" id={titleId}>
+          <h2 className={`${styles['title']} m-0 fs-body`} id={titleId} tabIndex={-1} data-title>
             {title}
           </h2>
           {close}

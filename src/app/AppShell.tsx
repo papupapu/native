@@ -1,8 +1,34 @@
-import { Link, Outlet } from 'react-router';
+import { Outlet } from 'react-router';
 import styles from './AppShell.module.scss';
 import './global.scss';
-import { Footer } from './footer/Footer.tsx';
+import { Footer } from '../components/Footer/Footer.tsx';
+import type { FooterSection } from '../components/Footer/Footer.tsx';
+import { Header } from '../components/Header/Header.tsx';
+import type { HeaderLink } from '../components/Header/Header.tsx';
 import { ModalProvider, useModal } from './modal/ModalProvider.tsx';
+
+const HEADER_LINKS: HeaderLink[] = [
+  { to: '/', label: 'Home' },
+  { to: '/annunci/1', label: 'Annuncio' },
+  { to: '/annunci/404', label: 'Annuncio inesistente' },
+  { to: '/cerca?q=milano', label: 'Cerca' },
+  { to: '/cerca?q=zzz', label: 'Ricerca vuota (404)' },
+  { to: '/vecchia-url', label: 'Vecchia URL (301)', reloadDocument: true },
+];
+
+const CITIES = ['Milano', 'Roma', 'Torino', 'Bergamo', 'Siena', 'Rimini'];
+
+const FOOTER_SECTIONS: FooterSection[] = [
+  { title: 'Cerca casa', links: CITIES.map((city) => ({ to: '/', label: `Case in vendita a ${city}` })) },
+  {
+    title: 'casa PoC',
+    links: [
+      { to: '/', label: 'Chi siamo' },
+      { to: '/', label: 'Contatti' },
+      { to: '/', label: 'Privacy' },
+    ],
+  },
+];
 
 function LoginButton() {
   const modal = useModal();
@@ -23,26 +49,11 @@ export function AppShell() {
   return (
     <ModalProvider>
       <div className={styles['shell']}>
-        <header className={styles['header']}>
-          <Link to="/" className={styles['brand']}>
-            casa PoC
-          </Link>
-          <nav className={styles['nav']}>
-            <Link to="/">Home</Link>
-            <Link to="/annunci/1">Annuncio</Link>
-            <Link to="/annunci/404">Annuncio inesistente</Link>
-            <Link to="/cerca?q=milano">Cerca</Link>
-            <Link to="/cerca?q=zzz">Ricerca vuota (404)</Link>
-            <Link to="/vecchia-url" reloadDocument>
-              Vecchia URL (301)
-            </Link>
-            <LoginButton />
-          </nav>
-        </header>
+        <Header brand="casa PoC" links={HEADER_LINKS} actions={<LoginButton />} />
         <main className={styles['main']}>
           <Outlet />
         </main>
-        <Footer />
+        <Footer sections={FOOTER_SECTIONS} />
       </div>
     </ModalProvider>
   );

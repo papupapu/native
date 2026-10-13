@@ -5,7 +5,7 @@ import { dist, root } from './shared.ts';
 /**
  * Guards the lazy-loading contract from the client stats (`dist/stats.json`). The contract is
  * discovered from the source, nothing to register: every `import(/* webpackChunkName: "x" *\/ './File.tsx')`
- * whose chunk name does not start with `route-` declares a lazy part (modal, footer, ...). For each:
+ * whose chunk name does not start with `route-` declares a lazy part (modal, ...). For each:
  *  1. initial chunks (main, vendor, route-*) hold no module of that file;
  *  2. its chunk exists, is not initial, and holds the file;
  *  3. when the file exports a `*_MARKER = '__X__'` constant, the marker string is absent from the

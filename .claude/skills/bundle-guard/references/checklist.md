@@ -5,7 +5,7 @@ Read the changed files against this list. Every item says what to look for, the 
 ## UX guardrails — apply to every fix
 
 - Lazy-load only what is **below the fold** or **shown after an interaction** (modal, gallery, map, overlay). Never lazy-load content that is visible on first paint.
-- A lazy piece needs: a placeholder of the **same size** (no layout shift, as `Footer` reserves its height), and a **prefetch on intent** (hover/focus/pointerdown, or after idle) when the user is likely to open it (`LoginButton` prefetches through `useModal().prefetch`). Opening must not feel slower than today.
+- A lazy piece needs: a placeholder of the **same size** (no layout shift: reserve the final height), and a **prefetch on intent** (hover/focus/pointerdown, or after idle) when the user is likely to open it (`LoginButton` prefetches through `useModal().prefetch`). Opening must not feel slower than today.
 - No visible loss of quality or function: no smaller images, no dropped features, no removed animations just for bytes.
 - If a fix delays something the user does immediately, or trades UX for bytes, do not propose it as a fix. At most a NOTE with the trade-off.
 
@@ -15,7 +15,7 @@ Read the changed files against this list. Every item says what to look for, the 
 | --- | --- | --- |
 | Heavy library imported statically in a page or in the shell | `import()` with its own `webpackChunkName`, only when it is used after an interaction or below the fold | The shell and `main` load on every route. |
 | New modal / overlay | Add it to `modalRegistry` (`src/app/modal/registry.ts`) as a literal `import()` with its own `modal-*` chunk name | Never a dynamic specifier: `import(`./${id}`)` bundles the whole folder. Export a `*_MARKER = '__X__'` constant from the module so `check:bundle` also greps the emitted files. |
-| New below-the-fold block imported by its parent | Same pattern as `Footer` / `FooterContent`: client-only placeholder with reserved height + `useOnVisible` | `check:bundle` discovers it by itself from the `import()`. |
+| New below-the-fold block imported by its parent | Client-only placeholder with reserved height + `useOnVisible` (`src/app/lazy/useOnVisible.ts`; no example in the repo yet, the old lazy footer was removed) | `check:bundle` discovers it by itself from the `import()`. |
 | A `common` cacheGroup or `chunks: 'all'` in `build/webpack.client.ts` | Do not add it | It drags lazy code back into the initial bundle (see the comment there). |
 | Static import of a page module (`Page.tsx`, `slice.ts`) from `routes.ts`, the shell or `main` | Keep the page behind its route's `lazy` + `import()`; the route chunk name must match in loader, `lazy.Component` and `handle.chunk` | A page pulled into `main` grows every route. `--modules` shows it as a new `src/...` entry. |
 | New npm dependency | State its gzip size (`--modules` shows source kB per package) and whether a native API or an existing dep does the job | Prefer none. A date/format helper rarely justifies a library. |
@@ -36,7 +36,7 @@ Read the changed files against this list. Every item says what to look for, the 
 ## CLS (layout shift)
 
 - Every `<img>` / `<iframe>` / video has `width` + `height` or an `aspect-ratio`.
-- Every client-only or lazy piece that appears in the flow has a placeholder with the final size (`Footer` is the reference).
+- Every client-only or lazy piece that appears in the flow has a placeholder with the final size.
 - Banners, cookie bars, alerts and late-loaded headers must not push content: reserve their space or overlay them.
 - Content that changes size after hydration needs a fixed-size slot.
 

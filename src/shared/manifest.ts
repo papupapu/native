@@ -5,9 +5,9 @@ export interface Assets {
 
 /**
  * `entry`: files to load on every page (vendor + main).
- * `groups`: files of every named async chunk group (`route-*`, `modal-*`, `footer-*`),
+ * `groups`: files of every named async chunk group (`route-*`, `modal-*`),
  * keyed by webpackChunkName. The server uses `entry` + `groups[handle.chunk]` for the
- * current route and never preloads the modal / footer groups.
+ * current route and never preloads the modal groups.
  */
 export interface AssetManifest {
   entry: Assets;

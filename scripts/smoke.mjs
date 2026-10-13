@@ -65,14 +65,15 @@ async function run() {
   check('/ 200 with fixture data in the HTML', home.status === 200 && home.body.includes('Trova la casa giusta per te'), `status ${home.status}`);
   check('/ serializes only config + home', stateKeys(home.body) === 'config,home', stateKeys(home.body));
   check('/ does not leak the request cookie', !home.body.includes('SECRET'));
-  check('/ has no modal or footer content', !home.body.includes('__MODAL_LOGIN__') && !home.body.includes('__FOOTER_CONTENT__'));
+  check('/ has no modal content', !home.body.includes('__MODAL_LOGIN__'));
+  check('/ renders header and footer in the HTML', /<header[\s>]/.test(home.body) && /<footer[\s>]/.test(home.body) && home.body.includes('Case in vendita a Milano'));
   const scripts = [...home.body.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
-  check('/ loads only vendor, main and route scripts', scripts.length > 0 && !scripts.some((s) => /modal|footer/.test(s)), scripts.join(' '));
+  check('/ loads only vendor, main and route scripts', scripts.length > 0 && !scripts.some((s) => /modal/.test(s)), scripts.join(' '));
 
-  // Critical CSS: main + the route are inlined and not linked; modal/footer CSS never in the page.
+  // Critical CSS: main + the route are inlined and not linked; modal CSS never in the page.
   check('/ inlines the CSS of main and route-home', cssNames(inlinedCss(home.body)) === 'main,route-home', cssNames(inlinedCss(home.body)));
   check('/ links no stylesheet at all (everything needed is inlined)', linkedCss(home.body).length === 0, linkedCss(home.body).join(' '));
-  check('/ has no modal or footer CSS', !/modal-login|footer/.test([...inlinedCss(home.body), ...linkedCss(home.body)].join(' ')));
+  check('/ has no modal CSS', !/modal-login/.test([...inlinedCss(home.body), ...linkedCss(home.body)].join(' ')));
   // The webpack CSS runtime skips a chunk's CSS when a <style data-href> with its URL exists: without it the inlined files would be fetched again.
   const mainScript = scripts.find((src) => path.basename(src).startsWith('main'));
   const mainJs = mainScript ? await get(mainScript) : null;

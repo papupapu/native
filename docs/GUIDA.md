@@ -85,12 +85,13 @@ portal/
 │   │   ├── RouteErrorBoundary.tsx  cosa si vede per 404/500 (dentro la shell)
 │   │   ├── types.ts            RouteHandle: i metadati di ogni route
 │   │   ├── pages/<pagina>/     route.ts + slice.ts + Page.tsx (+ Page.module.scss solo se serve)
-│   │   ├── modal/              registry + provider: la modale si carica al click
+│   │   ├── modal/              registry + provider + una modale per file (LoginModal.tsx): la modale si carica al click
 │   │   └── lazy/               resolveLazyMatches, useOnVisible (per ora inutilizzato)
 │   ├── components/           Componenti presentazionali riusabili (props in, markup out), import statici
 │   │   ├── Header/             Header.tsx + Header.module.scss
 │   │   ├── Footer/             Footer.tsx (solo classi utility, nessun modulo)
-│   │   └── Button/             Button.tsx + Button.module.scss (usato da LoginButton in AppShell)
+│   │   ├── Button/             Button.tsx + Button.module.scss (usato da LoginButton in AppShell e dalle modali)
+│   │   └── Modal/              Modal.tsx + Modal.module.scss: la shell standard di ogni modale (lo importano solo i chunk modal-*)
 │   ├── store/                Redux Toolkit: makeStore, rootReducer, hook tipizzati, storeContext
 │   ├── services/             Accesso ai dati: tipi, fixture, versione "in-process" e versione "browser"
 │   ├── globals.d.ts          dichiara __DEV__, i campi di window e i moduli .scss
@@ -634,6 +635,56 @@ E nel browser: apri la pagina, poi naviga *verso* di essa da un link (aggiungine
 | TypeScript si lamenta su `state.agency` | manca la chiave in `LazyLoadedSlices` |
 | La route `*` risponde al posto della tua | il `path` della tua route non combacia con l'URL (l'ordine nell'array non c'entra) |
 
+### 8.1 Aggiungere una modale
+
+Ogni modale è un chunk lazy che mette il suo contenuto dentro la shell standard `Modal`
+(`src/components/Modal/Modal.tsx`).
+
+1. **Crea `src/app/modal/<Nome>Modal.tsx`** (export default) che riceve `ModalProps` e li passa alla shell:
+
+   ```tsx
+   import type { ModalProps } from './registry.ts';
+   import { Modal } from '../../components/Modal/Modal.tsx';
+
+   export default function ContactModal(props: ModalProps) {
+     return (
+       <Modal {...props} size="md" title="Contattaci" footer={/* bottoni, opzionale */}>
+         {/* contenuto */}
+       </Modal>
+     );
+   }
+   ```
+
+   `ModalProps` è `{ onClose, closing, onExited }`: li fornisce `ModalProvider`, la modale non li gestisce.
+   Per il resto la modale non ha logica di apertura/chiusura né CSS proprio: usa le classi utility (§9.3).
+2. **Registrala in `src/app/modal/registry.ts`** con un `import()` letterale e un `webpackChunkName` `modal-<nome>`
+   (mai un template literal). `ModalId` si aggiorna da solo. `check:bundle` la trova senza altre registrazioni;
+   per il controllo sulla stringa esporta una costante `*_MARKER` come `MODAL_MARKER` in `LoginModal.tsx`.
+3. **Aprila** con `useModal().open('<id>')`; per scaricare il chunk prima del click chiama `prefetch('<id>')` da
+   `onPointerEnter` / `onFocus` del bottone (vedi `LoginButton` in `AppShell.tsx`).
+
+Le props della shell (tutte opzionali tranne `children` e uno tra `title` e `ariaLabel`):
+
+| Prop | Valori | Effetto |
+| --- | --- | --- |
+| `size` | `'sm'` / `'md'` / `'lg'` (default `md`) | larghezza 400 / 560 / 800px, sempre limitata al viewport; l'altezza segue il contenuto e il corpo scorre oltre il viewport |
+| `mobile` | `'fullscreen'` (default) / `'dialog'` | sotto `$breakpoint-md` (768px) `fullscreen` occupa 100vw x 100dvh e sale dal basso; `dialog` resta un riquadro centrato |
+| `title` | nodo React | header standard con `h2` e pulsante di chiusura; senza `title` il tipo richiede `ariaLabel` |
+| `footer` | nodo React | barra di azioni standard; assente se omesso |
+| `closeButton` | `true` (default) / `false` | la X sta nel header, o fluttua nell'angolo se non c'è il `title` |
+
+Cosa fa la shell per te: `<dialog>` nativo aperto con `showModal()` (top layer, focus trap, pagina dietro inerte),
+Escape e click sul backdrop chiudono, lo scroll della pagina è bloccato (`overflow: hidden` su `<html>`), animazioni
+di apertura e chiusura (`@keyframes` su `data-state`, disattivate con `prefers-reduced-motion`). Un elemento con
+`data-autofocus` riceve il focus iniziale. Per un bottone di submit nel footer, fuori dal `<form>`, usa
+`<Button type="submit" form={formId} ...>` con lo stesso `id` del form (vedi `LoginModal.tsx`).
+
+Ciclo di vita: `close()` imposta solo `closing` nello stato di `ModalProvider` (`{ id, closing } | null`); la shell
+aspetta la fine delle animazioni (`dialog.getAnimations({ subtree: true })`), chiama `dialog.close()` e l'evento
+nativo `close` chiama `onExited`, che smonta la modale. **Importa `Modal` solo dai file in `src/app/modal/`**: se lo
+importa `AppShell` o una pagina, la shell e il suo CSS finiscono in `main` o in una route (`check:bundle` non lo vede, perché controlla solo i file
+importati con `import()`: guarda la differenza con `npm run bundle:compare`).
+
 ---
 
 ## 9. Best practice
@@ -757,7 +808,9 @@ comunque su `border`): le usa la variante `ghost` di `Button`. Non ci sono varia
    in `_tokens.scss` **fuori dalle mappe**: nessuna classe utility li usa, quindi non generano CSS in `main`.
 2. **I moduli tengono solo ciò che non ha un token o una utility:** `grid-template-columns`,
    `position`/`inset`, `rgba(...)`, larghezze con `min()`, font-size fuori scala, `font: inherit`,
-   `cursor`, dimensioni di `svg` annidati, stati e pseudo-classi. Un selettore discendente (`.card h2`) diventa una classe messa
+   `cursor`, dimensioni di `svg` annidati, `@keyframes`, `::backdrop`, media query, stati e pseudo-classi.
+   Il breakpoint `$breakpoint-md` (768px) è una variabile in `_tokens.scss` **fuori dalle mappe** (nessuna
+   utility, niente varianti responsive): lo usa `Modal.module.scss` con `@media (max-width: #{$breakpoint-md - 1px})`. Un selettore discendente (`.card h2`) diventa una classe messa
    sull'elemento.
 3. **`utilities.scss` si importa solo in `src/app/AppShell.tsx`** (subito dopo `./global.scss`): così sta
    una sola volta in `main` (circa 3,9 KB, 1,29 KB gzip). Se lo importi da una pagina o da un componente
@@ -823,7 +876,7 @@ navigazione client che torna sulla stessa route non riscaricano il CSS.
 
 | Inline (CSS critico) | Non inline |
 | --- | --- |
-| `main`: `global.scss`, `utilities.scss` (le classi utility, vedi §9.3), `AppShell.module.scss`, `Header.module.scss` | `modal-login`: il `LoginModal.module.scss`, chunk lazy (le sue utility sono già in `main`) |
+| `main`: `global.scss`, `utilities.scss` (le classi utility, vedi §9.3), `AppShell.module.scss`, `Header.module.scss` | `modal-login`: il `Modal.module.scss` della shell, chunk lazy (le utility di `LoginModal` sono già in `main`; `LoginModal` non ha un modulo) |
 | `route-<x>`: il `Page.module.scss` della pagina (se esiste) e di ciò che la pagina importa staticamente | |
 
 **Esempio guidato: "la pagina X ha una sezione pesante sotto la piega (galleria, mappa)".**

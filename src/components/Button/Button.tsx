@@ -19,8 +19,12 @@ type ButtonProps = {
   variant: keyof typeof VARIANTS;
   /** Padding, gap and font size. Default: `lg`. */
   size?: keyof typeof SIZES;
-  /** Called on click. */
-  action: MouseEventHandler<HTMLButtonElement>;
+  /** Called on click. Optional: a `submit` button needs none. */
+  action?: MouseEventHandler<HTMLButtonElement>;
+  /** `id` of the `<form>` this button submits, when it is rendered outside of it. */
+  form?: string;
+  /** Accessible name, for buttons that have no text (icon only). */
+  ariaLabel?: string;
   /** Called when the pointer enters (e.g. to prefetch what the click opens). */
   onPointerEnter?: PointerEventHandler<HTMLButtonElement>;
   /** Called when the button gets focus (keyboard counterpart of `onPointerEnter`). */
@@ -39,6 +43,8 @@ export function Button({
   variant = 'primary',
   size = 'lg',
   action,
+  form,
+  ariaLabel,
   onPointerEnter,
   onFocus,
   label,
@@ -50,6 +56,8 @@ export function Button({
     <button
       type={type}
       className={`${styles['button']} ${styles[variant]} inline-flex items-center justify-center border rounded-1 ${SIZES[size]} ${VARIANTS[variant]}`}
+      form={form}
+      aria-label={ariaLabel}
       onClick={action}
       onPointerEnter={onPointerEnter}
       onFocus={onFocus}

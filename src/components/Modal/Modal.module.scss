@@ -1,0 +1,120 @@
+// Shell of every modal. Colors, spacing and the header/footer layout come from the utilities in
+// Modal.tsx; this module keeps what has no utility: the native dialog reset, widths, max height,
+// the mobile fullscreen layout, the backdrop and the animations.
+$mobile: $breakpoint-md - 1px;
+
+.dialog {
+  padding: 0;
+  border: 0;
+  border-radius: $radius-2;
+  // Height follows the content, up to the viewport minus a margin; the body scrolls beyond that.
+  max-height: calc(100dvh - #{2 * $space-5});
+  overflow: hidden;
+
+  // `display` only when open: a rule on `.dialog` alone would override the UA `display: none`.
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &[data-size='sm'] {
+    width: min(400px, calc(100vw - #{2 * $space-3}));
+  }
+  &[data-size='md'] {
+    width: min(560px, calc(100vw - #{2 * $space-3}));
+  }
+  &[data-size='lg'] {
+    width: min(800px, calc(100vw - #{2 * $space-3}));
+  }
+
+  &::backdrop {
+    background: rgba(31, 41, 51, 0.6);
+  }
+
+  &[data-state='open'] {
+    animation: enter 200ms ease-out;
+    &::backdrop {
+      animation: fade-in 200ms ease-out;
+    }
+  }
+  &[data-state='closing'] {
+    animation: exit 150ms ease-in forwards;
+    &::backdrop {
+      animation: fade-out 150ms ease-in forwards;
+    }
+  }
+}
+
+// Below the breakpoint the box fills the viewport and slides up from the bottom.
+@media (max-width: #{$mobile}) {
+  .dialog[data-mobile='fullscreen'] {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+
+    &[data-state='open'] {
+      animation: slide-in 250ms ease-out;
+    }
+    &[data-state='closing'] {
+      animation: slide-out 200ms ease-in forwards;
+    }
+  }
+}
+
+.body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.floating-close {
+  position: absolute;
+  top: $space-2;
+  right: $space-2;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes exit {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes slide-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop,
+  .dialog[data-state],
+  .dialog[data-state]::backdrop,
+  .dialog[data-mobile][data-state] {
+    animation: none;
+  }
+}

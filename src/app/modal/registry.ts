@@ -1,7 +1,13 @@
 import type { ComponentType } from 'react';
 
+/** Passed by `ModalProvider` to every modal; a modal forwards it to the `Modal` shell as is. */
 export interface ModalProps {
+  /** Starts the (animated) close. */
   onClose: () => void;
+  /** True from `onClose` until the exit animation is over: the shell plays the exit. */
+  closing: boolean;
+  /** Called by the shell once the dialog is closed: the provider unmounts the modal. */
+  onExited: () => void;
 }
 
 /**

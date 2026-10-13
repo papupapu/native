@@ -28,6 +28,8 @@ $font-size-body: 16px;
 $font-size-title: 28px;
 $font-size-small: 14px;
 $page-width: 960px;
+// Viewport width from which the layout stops being "mobile". Not in the maps: no utility uses it.
+$breakpoint-md: 768px;
 
 // Maps for the utility-class generator (`utilities.scss`). They emit no CSS. Keys are the
 // class-name suffixes: `.p-3`, `.color-text-muted`, `.fs-small`, `.rounded-1`.

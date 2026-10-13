@@ -84,17 +84,19 @@ portal/
 │   │   ├── AppShell.tsx        header + <Outlet/> + footer (persistente tra le pagine); qui stanno i dati di header e footer
 │   │   ├── RouteErrorBoundary.tsx  cosa si vede per 404/500 (dentro la shell)
 │   │   ├── types.ts            RouteHandle: i metadati di ogni route
-│   │   ├── pages/<pagina>/     route.ts + slice.ts + Page.tsx + Page.module.scss
+│   │   ├── pages/<pagina>/     route.ts + slice.ts + Page.tsx (+ Page.module.scss solo se serve)
 │   │   ├── modal/              registry + provider: la modale si carica al click
 │   │   └── lazy/               resolveLazyMatches, useOnVisible (per ora inutilizzato)
 │   ├── components/           Componenti presentazionali riusabili (props in, markup out), import statici
 │   │   ├── Header/             Header.tsx + Header.module.scss
-│   │   └── Footer/             Footer.tsx + Footer.module.scss
+│   │   ├── Footer/             Footer.tsx (solo classi utility, nessun modulo)
+│   │   └── Button/             Button.tsx + Button.module.scss (usato da LoginButton in AppShell)
 │   ├── store/                Redux Toolkit: makeStore, rootReducer, hook tipizzati, storeContext
 │   ├── services/             Accesso ai dati: tipi, fixture, versione "in-process" e versione "browser"
 │   ├── globals.d.ts          dichiara __DEV__, i campi di window e i moduli .scss
 │   ├── shared/               Tipi usati da server e bundle SSR (RequestCtx, PublicConfig, manifest)
-│   └── styles/_tokens.scss   Token di design (finti), iniettati automaticamente in ogni .scss
+│   └── styles/               _tokens.scss: token di design (finti) e mappe Sass, iniettati in ogni .scss
+│                             utilities.scss: classi utility globali generate dalle mappe (solo AppShell lo importa)
 └── dist/                     Output di `npm run build` (non si committa)
     ├── client/                 JS/CSS per il browser + manifest.json
     └── server/render.cjs       il bundle SSR
@@ -563,7 +565,6 @@ e serve anche al CSS critico inlinato e a `check:bundle`, che lo usano per ricon
 ```tsx
 import { Link } from 'react-router';
 import { useAppSelector } from '../../../store/hooks.ts';
-import styles from './Page.module.scss';
 import { selectAgency } from './slice.ts';
 
 export function Page() {
@@ -573,33 +574,24 @@ export function Page() {
   return (
     <>
       <title>{`${data.name} | casa PoC`}</title>
-      <article className={styles['agency']}>
+      <article className="py-4">
         <p>
           <Link to="/">← Home</Link>
         </p>
-        <h1>{data.name}</h1>
-        <p>{data.city}</p>
+        <h1 className="m-0 mb-2 fs-title">{data.name}</h1>
+        <p className="color-text-muted">{data.city}</p>
       </article>
     </>
   );
 }
 ```
 
-`src/app/pages/agency/Page.module.scss`: i token (`$space-4`, `$color-text-muted`…) sono già
-disponibili senza import.
-
-```scss
-.agency {
-  padding: $space-4 0;
-
-  h1 {
-    margin: 0 0 $space-2;
-    font-size: $font-size-title;
-  }
-}
-```
-
-Le classi si leggono con `styles['agency']` (con parentesi quadre: è la convenzione del progetto).
+Gli stili sono classi utility (§9.3), già disponibili perché `AppShell` importa `utilities.scss`: la
+pagina non importa nulla. Se serve qualcosa che le utility non coprono (un `grid-template-columns`, un
+font-size fuori scala) crea `src/app/pages/agency/Page.module.scss`: i token (`$space-4`,
+`$color-text-muted`…) sono disponibili senza import. Le classi del modulo si leggono con
+`styles['agency']` (con parentesi quadre: è la convenzione del progetto) e si uniscono alle utility con
+un template string; la stessa proprietà non va messa sia in una utility sia nel modulo.
 
 ### Passo 8: collega la route
 
@@ -735,6 +727,55 @@ trasformazione, la duplichi tra pagine e la rendi difficile da testare.
    Per un messaggio da mostrare all'utente usa un codice (`'not_found'`, `'unavailable'`) e traducilo
    nel componente.
 
+### 9.3 Stili: classi utility e CSS Modules
+
+`src/styles/_tokens.scss` definisce, oltre alle variabili, quattro mappe Sass (`$spacers`, `$colors`,
+`$font-sizes`, `$radii`) che non emettono CSS: le chiavi sono i suffissi delle classi.
+`src/styles/utilities.scss` le legge con `@each` e genera classi **globali** (non modulo, nome non
+hashato): `p-3`, `px-3`, `mb-2`, `mx-auto`, `gap-2`, `color-text-muted`, `bg-brand`, `border-color-border`,
+`border`, `border-t`, `fs-small`, `fw-bold`, `rounded-1`, più gli helper di layout (`block`, `flex`,
+`inline-flex`, `grid`, `flex-col`, `flex-wrap`, `flex-1`, `shrink-0`, `items-center`, `justify-center`,
+`justify-between`, `justify-end`, `w-full`, `max-w-page`, `list-none`, `no-underline`). Nelle famiglie
+dei colori le uniche due eccezioni scritte a mano, fuori dalle mappe (non esiste un token trasparente), sono `bg-transparent`
+(dopo il ciclo `bg-*`) e `border-color-transparent` (dopo il ciclo `border-color-*`, così vince
+comunque su `border`): le usa la variante `ghost` di `Button`. Non ci sono varianti responsive. Le classi sono emesse dalla più generale alla più specifica (`m-0` prima di `mb-2`,
+`border-color-*` dopo `border*`), quindi `m-0 mb-2` funziona.
+
+**Regole.**
+
+1. **Una proprietà CSS viene da una utility *oppure* dal modulo del componente, mai da tutti e due sullo
+   stesso elemento.** Il CSS di route è inlinato dopo quello di `main`: a parità di specificità vincerebbe
+   in silenzio il modulo. **Eccezione: stati e pseudo-classi** (`:hover`, `:focus`, `:active`). Le utility
+   non hanno varianti per le pseudo-classi, quindi gli stati stanno nel modulo e sovrascrivono la utility
+   a riposo di proposito (la regola dello stato è più specifica). Esempio: `Button.tsx` mette sul
+   `<button>` sia `styles[variant]` sia le utility di `VARIANTS` (`bg-brand`…); `.primary:hover` in
+   `Button.module.scss` cambia `background` e `border-color` solo in hover. Nello stesso file `.button:focus`
+   (outline 2px `$color-brand`, offset 2px; vale anche per il focus da tastiera, mentre dopo un click del
+   mouse l'outline resta fino al blur) e `.button:active` (outline 2px `$color-text`) vanno in
+   quest'ordine: `:active` viene dopo `:focus`, a pari specificità, e vince mentre il bottone è premuto.
+   I tre colori degli stati (`$color-brand-dark`, `$color-grey-light`, `$color-grey-dark`) sono variabili
+   in `_tokens.scss` **fuori dalle mappe**: nessuna classe utility li usa, quindi non generano CSS in `main`.
+2. **I moduli tengono solo ciò che non ha un token o una utility:** `grid-template-columns`,
+   `position`/`inset`, `rgba(...)`, larghezze con `min()`, font-size fuori scala, `font: inherit`,
+   `cursor`, dimensioni di `svg` annidati, stati e pseudo-classi. Un selettore discendente (`.card h2`) diventa una classe messa
+   sull'elemento.
+3. **`utilities.scss` si importa solo in `src/app/AppShell.tsx`** (subito dopo `./global.scss`): così sta
+   una sola volta in `main` (circa 3,9 KB, 1,29 KB gzip). Se lo importi da una pagina o da un componente
+   viene duplicato nel CSS di ogni route.
+4. **Le classi si uniscono con i template string**, con le classi del modulo per prime:
+   `` className={`${styles['cards']} grid gap-3 m-0 p-0 list-none`} ``.
+
+**Come aggiungere una utility o un token.**
+
+- Nuovo valore di una scala esistente (un `$space-6`): aggiungi la variabile e la chiave nella mappa in
+  `_tokens.scss`; la classe (`p-6`, `gap-6`…) nasce da sola.
+- Nuova famiglia (per esempio `opacity-*`): una mappa in `_tokens.scss` e un blocco `@each` in
+  `utilities.scss`, mettendolo prima di ciò che deve poter sovrascrivere.
+- Utility singola senza token (`.flex-col`): una regola in `utilities.scss`.
+
+Costo: il CSS critico di `main` passa da circa 1,1 KB a circa 4,3 KB (il budget è 14 KB, vedi §10) e il
+JS di primo caricamento sale di 0,13-0,20 KB gzip per route.
+
 ---
 
 ## 10. Scalabilità
@@ -782,8 +823,8 @@ navigazione client che torna sulla stessa route non riscaricano il CSS.
 
 | Inline (CSS critico) | Non inline |
 | --- | --- |
-| `main`: `global.scss`, `AppShell.module.scss`, `Header.module.scss`, `Footer.module.scss` | `modal-login`: CSS di `LoginModal`, chunk lazy |
-| `route-<x>`: il `Page.module.scss` della pagina e di ciò che la pagina importa staticamente | |
+| `main`: `global.scss`, `utilities.scss` (le classi utility, vedi §9.3), `AppShell.module.scss`, `Header.module.scss` | `modal-login`: il `LoginModal.module.scss`, chunk lazy (le sue utility sono già in `main`) |
+| `route-<x>`: il `Page.module.scss` della pagina (se esiste) e di ciò che la pagina importa staticamente | |
 
 **Esempio guidato: "la pagina X ha una sezione pesante sotto la piega (galleria, mappa)".**
 
@@ -821,7 +862,9 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
    `route-home` e non linki nessun foglio di stile, che non ci sia CSS della modale, che
    `/annunci/1` inlini `route-listing`, che `/non-esiste` inlini solo `main` e che `main*.js` contenga
    `data-href` (se una versione futura del plugin perdesse la ricerca dello `<style>`, i file verrebbero
-   riscaricati in silenzio: lo smoke lo segnala).
+   riscaricati in silenzio: lo smoke lo segnala). Altri due check controllano che il CSS inlinato di
+   `main` contenga le classi utility (`.p-3{`) e quello di `route-home` no (se qualcuno importasse
+   `utilities.scss` da una pagina, finirebbe in ogni route).
 2. In DevTools > Network (`npm start`), al primo caricamento di `/` non c'è nessuna richiesta
    `route-*.css` né `main*.css`.
 
@@ -869,6 +912,8 @@ non fallisce. Se lo vedi, sposta CSS in un chunk lazy come sopra.
 | Il server non passa da webpack | Importa con estensione `.ts`, niente enum/JSX, e non importare `src/app/` da `src/server/` |
 | Chrome DevTools chiama `/.well-known/appspecific/com.chrome.devtools.json` | Risponde 404 secco (`app.ts`), non serve rendere la shell |
 | `Component: () => null` su `notFound` | Esiste solo per zittire il warning di React Router (il loader lancia sempre) |
+| Una proprietà CSS sia in una utility sia nel modulo | Il CSS di route è inlinato dopo `main`: vince il modulo, la utility non ha effetto. Una proprietà, una sola fonte (§9.3) |
+| `utilities.scss` importato fuori da `AppShell.tsx` | Il CSS delle utility viene duplicato nel CSS di ogni route |
 
 ---
 

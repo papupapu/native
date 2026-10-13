@@ -1,6 +1,8 @@
 import { Outlet } from 'react-router';
 import styles from './AppShell.module.scss';
 import './global.scss';
+import '../styles/utilities.scss';
+import { Button } from '../components/Button/Button.tsx';
 import { Footer } from '../components/Footer/Footer.tsx';
 import type { FooterSection } from '../components/Footer/Footer.tsx';
 import { Header } from '../components/Header/Header.tsx';
@@ -33,24 +35,22 @@ const FOOTER_SECTIONS: FooterSection[] = [
 function LoginButton() {
   const modal = useModal();
   return (
-    <button
-      type="button"
-      className={styles['login']}
-      onClick={() => modal.open('login')}
+    <Button
+      variant="primary"
+      label="Accedi"
+      action={() => modal.open('login')}
       onPointerEnter={() => modal.prefetch('login')}
       onFocus={() => modal.prefetch('login')}
-    >
-      Accedi
-    </button>
+    />
   );
 }
 
 export function AppShell() {
   return (
     <ModalProvider>
-      <div className={styles['shell']}>
+      <div className={`${styles['shell']} flex flex-col`}>
         <Header brand="casa PoC" links={HEADER_LINKS} actions={<LoginButton />} />
-        <main className={styles['main']}>
+        <main className="flex-1 w-full max-w-page mx-auto px-3">
           <Outlet />
         </main>
         <Footer sections={FOOTER_SECTIONS} />

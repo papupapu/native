@@ -29,3 +29,7 @@ At the end of a task that changed behavior or structure, delegate **once** to th
 ## Server code
 
 `src/server` runs under Node type stripping: no JSX, only erasable syntax, `.ts` import extensions. Details: `README.md` and `docs/GUIDA.md` §4.
+
+## Styles
+
+Style with the utility classes of `src/styles/utilities.scss` (generated from the maps in `_tokens.scss`); a CSS property comes from a utility or from the component's `.module.scss`, never both on the same element (exception: `:hover`/`:focus`/`:active` states live in the module and override the resting utility on purpose). Import `utilities.scss` only from `AppShell.tsx`. Details: `docs/GUIDA.md` §9.3.

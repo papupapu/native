@@ -1,0 +1,39 @@
+// Resting colors come from the utilities in Button.tsx (`VARIANTS`); the states live here
+// because utilities have no pseudo-class variants. A state rule beats the utility on purpose
+// (`.primary:hover` is more specific than `.bg-brand`).
+.button {
+  font-family: inherit;
+  cursor: pointer;
+
+  // `:focus` also covers keyboard (tab) focus. A mouse click leaves the outline until blur.
+  &:focus {
+    outline: 2px solid $color-brand;
+    outline-offset: 2px;
+  }
+
+  // Must stay after `:focus` (same specificity): while pressed, the dark outline wins.
+  &:active {
+    outline: 2px solid $color-text;
+    outline-offset: 2px;
+  }
+}
+
+.primary:hover {
+  background: $color-brand-dark;
+  border-color: $color-brand-dark;
+}
+
+.secondary:hover {
+  background: $color-grey-light;
+  border-color: $color-grey-dark;
+}
+
+.ghost:hover {
+  background: $color-grey-light;
+  border-color: $color-grey-light;
+}
+
+.icon svg {
+  width: 1em;
+  height: 1em;
+}

@@ -1,9 +1,0 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(31, 41, 51, 0.6);
-}
-
-.dialog {
-  width: min(400px, calc(100vw - #{$space-4}));
-}

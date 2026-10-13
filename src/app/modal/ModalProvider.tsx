@@ -29,18 +29,20 @@ function getLazyModal(id: ModalId) {
  * so it never takes part in hydration.
  */
 export function ModalProvider({ children }: { children: ReactNode }) {
-  const [openId, setOpenId] = useState<ModalId | null>(null);
-  const close = useCallback(() => setOpenId(null), []);
+  const [current, setCurrent] = useState<{ id: ModalId; closing: boolean } | null>(null);
+  // `close` only flags the exit: the shell plays the animation and calls `onExited` when done.
+  const close = useCallback(() => setCurrent((c) => (c && !c.closing ? { ...c, closing: true } : c)), []);
+  const onExited = useCallback(() => setCurrent(null), []);
   const api = useMemo<ModalApi>(
     () => ({
-      open: setOpenId,
+      open: (id) => setCurrent({ id, closing: false }),
       close,
       prefetch: (id) => void modalRegistry[id](),
     }),
     [close],
   );
 
-  const Modal = openId ? getLazyModal(openId) : null;
+  const Modal = current ? getLazyModal(current.id) : null;
 
   return (
     <ModalContext value={api}>
@@ -48,7 +50,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       {Modal &&
         createPortal(
           <Suspense fallback={null}>
-            <Modal onClose={close} />
+            <Modal key={current?.id} onClose={close} closing={current?.closing ?? false} onExited={onExited} />
           </Suspense>,
           document.body,
         )}

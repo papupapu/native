@@ -11,7 +11,8 @@ SCSS tokens.
 npm install
 npm run dev            # http://localhost:3000 (PORT=… to change), HMR + SSR reload
 npm run build          # dist/client, dist/server/render.cjs, dist/stats.json
-npm run check:bundle   # fails if modal/footer code leaks into main/vendor/route-*
+npm run check:bundle   # fails if a lazy part (modal, footer, any non-route import()) leaks into main/vendor/route-*
+npm run bundle:compare # first-load JS per route vs the merge-base, judged by build/bundle-budget.json (needs a build)
 npm start              # production server (needs a build)
 npm run analyze        # build + dist/bundle-report.html
 npm run typecheck
@@ -26,7 +27,7 @@ npm run typecheck
 | `src/app/` | Routes, shell, pages (`pages/<id>/{route,slice,Page}`), modal, footer, lazy helpers. Shared by server and client bundles. |
 | `src/store/` | `makeStore()` per request, `combineSlices().withLazyLoadedSlices()`, typed hooks. |
 | `src/services/` | Fake fetch (50 ms + fixtures), used in-process by the loaders (no loopback HTTP) and by `/api/v1` for the browser. |
-| `build/` | webpack configs (Rspack-compatible shape), `AssetManifestPlugin`, `dev.ts`, `check-bundle.ts`. |
+| `build/` | webpack configs (Rspack-compatible shape), `AssetManifestPlugin`, `dev.ts`, `check-bundle.ts`, `bundle-compare.ts` + `bundle-budget.json`. |
 
 ## How a request works
 
@@ -67,7 +68,8 @@ A first attempt at a footer rendered by the server and hydrated late was a `<Sus
 | Serialized state limited to `config` + matched slices | ok |
 | Zero recoverable hydration errors, empty console (home, listing, 404 state) | ok |
 | Client navigation without a full reload: home → listing → 404 → home, browser back/forward, with the footer still unloaded (dev and prod) | ok |
-| `check:bundle`: no `LoginModal`/`FooterContent` module or marker in main/vendor/route-*; lazy chunks exist and contain them | 30 ok, 0 failed |
+| `check:bundle`: lazy parts discovered from the `import()` calls (`LoginModal`, `FooterContent`): no module or marker in main/vendor/route-*; their chunks exist, are not initial and contain them | 33 ok, 0 failed |
+| `bundle:compare`: growth vs the merge-base and first-load JS per route within `build/bundle-budget.json` | exit 0 = ok/warnings, 1 = BLOCKER, 2 = not measurable |
 | Network on load: only vendor, main, route-*; no modal, no footer JS | ok |
 | Modal: `modal-login` requested on hover (prefetch) or on click, never before | ok (checked with and without hover) |
 | Search: `/cerca?q=milano` 200, `/cerca?q=zzz` 404 with the full search page in the HTML (form, `noindex`), `/cerca` 200 | ok (curl, prod) |

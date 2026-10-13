@@ -5,6 +5,8 @@
       "Bash(node scripts/test-hooks.mjs)",
       "Bash(npm run typecheck)",
       "Bash(npm run check:bundle)",
+      "Bash(npm run bundle:compare*)",
+      "Bash(node build/bundle-compare.ts*)",
       "Bash(npm run build)",
       "Bash(npm run smoke)",
       "Bash(node scripts/smoke.mjs*)",

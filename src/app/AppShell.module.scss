@@ -1,0 +1,50 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3;
+  border-bottom: 1px solid $color-border;
+  background: $color-surface;
+}
+
+.brand {
+  color: $color-brand;
+  font-weight: 700;
+  font-size: 20px;
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  font-size: $font-size-small;
+}
+
+.login {
+  padding: $space-1 $space-3;
+  border: 0;
+  border-radius: $radius-1;
+  background: $color-brand;
+  color: $color-brand-contrast;
+  font: inherit;
+  cursor: pointer;
+}
+
+.main {
+  flex: 1;
+  /* PoC: keeps the footer below the fold so its lazy loading is observable. */
+  min-height: 250vh;
+  width: 100%;
+  max-width: $page-width;
+  margin: 0 auto;
+  padding: 0 $space-3;
+  box-sizing: border-box;
+}

@@ -1,0 +1,54 @@
+{
+  "name": "portal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PoC: portal18-style SSR architecture on the 2026 stack (Express 5, React 19, React Router 8 data mode, Redux Toolkit, webpack 5)",
+  "engines": {
+    "node": ">=24"
+  },
+  "volta": {
+    "node": "24.16.0"
+  },
+  "scripts": {
+    "dev": "node --watch-path=src/server --watch-path=build build/dev.ts",
+    "build": "node build/build.ts",
+    "start": "NODE_ENV=production node src/server/boot.ts",
+    "typecheck": "tsc --noEmit",
+    "check:bundle": "node build/check-bundle.ts",
+    "analyze": "ANALYZE=1 node build/build.ts"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "2.13.0",
+    "cookie-parser": "1.4.7",
+    "express": "5.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-redux": "9.3.0",
+    "react-router": "8.4.0",
+    "serialize-javascript": "7.1.2"
+  },
+  "devDependencies": {
+    "@pmmmwh/react-refresh-webpack-plugin": "0.6.3",
+    "@swc/core": "1.16.18",
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/serialize-javascript": "5.0.4",
+    "@types/webpack-bundle-analyzer": "4.7.0",
+    "@types/webpack-hot-middleware": "2.25.12",
+    "css-loader": "7.1.5",
+    "mini-css-extract-plugin": "2.10.2",
+    "react-refresh": "0.19.0",
+    "sass-embedded": "1.105.1",
+    "sass-loader": "17.0.1",
+    "swc-loader": "0.2.7",
+    "typescript": "6.0.3",
+    "webpack": "5.111.1",
+    "webpack-bundle-analyzer": "5.4.0",
+    "webpack-dev-middleware": "8.3.0",
+    "webpack-hot-middleware": "2.26.1"
+  }
+}

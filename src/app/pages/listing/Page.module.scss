@@ -1,0 +1,19 @@
+.listing {
+  padding: $space-4 0;
+
+  h1 {
+    margin: 0 0 $space-2;
+    font-size: $font-size-title;
+  }
+}
+
+.meta {
+  color: $color-text-muted;
+}
+
+.price {
+  display: block;
+  margin-top: $space-3;
+  color: $color-brand;
+  font-size: 24px;
+}

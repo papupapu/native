@@ -1,0 +1,40 @@
+.hero {
+  padding: $space-5 0 $space-4;
+
+  h1 {
+    margin: 0 0 $space-2;
+    font-size: $font-size-title;
+  }
+
+  p {
+    margin: 0;
+    color: $color-text-muted;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: $space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: $space-3;
+  border: 1px solid $color-border;
+  border-radius: $radius-2;
+  background: $color-surface;
+
+  h2 {
+    margin: 0 0 $space-2;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0 0 $space-2;
+    color: $color-text-muted;
+    font-size: $font-size-small;
+  }
+}

@@ -1,8 +1,8 @@
 # portal (PoC)
 
 Architecture-only replica of the portal18 server + SSR on the 2026 stack: Node 24, Express 5, React 19,
-React Router 8 (data mode), Redux Toolkit 2, webpack 5, TypeScript 6. Three pages (home, listing, search), a fake
-fetch that fills the store, code splitting, a lazy modal and a lazy footer. No shared-* packages, fake
+React Router 8 (data mode), Redux Toolkit 2, webpack 5, TypeScript 6. Four pages (home, listing, search, swpeople), a fake
+fetch that fills the store (`swpeople` calls the public `https://swapi.dev/api`, 5 s timeout), code splitting, a lazy modal and a lazy footer. No shared-* packages, fake
 SCSS tokens.
 
 > Nuovo? Parti da [docs/GUIDA.md](docs/GUIDA.md): architettura, server vs client, routing, data fetch e come aggiungere una pagina.
@@ -67,7 +67,7 @@ A first attempt at a footer rendered by the server and hydrated late was a `<Sus
 | Serialized state limited to `config` + matched slices | ok |
 | Zero recoverable hydration errors, empty console (home, listing, 404 state) | ok |
 | Client navigation without a full reload: home → listing → 404 → home, browser back/forward, with the footer still unloaded (dev and prod) | ok |
-| `check:bundle`: no `LoginModal`/`FooterContent` module or marker in main/vendor/route-*; lazy chunks exist and contain them | 26 ok, 0 failed |
+| `check:bundle`: no `LoginModal`/`FooterContent` module or marker in main/vendor/route-*; lazy chunks exist and contain them | 30 ok, 0 failed |
 | Network on load: only vendor, main, route-*; no modal, no footer JS | ok |
 | Modal: `modal-login` requested on hover (prefetch) or on click, never before | ok (checked with and without hover) |
 | Search: `/cerca?q=milano` 200, `/cerca?q=zzz` 404 with the full search page in the HTML (form, `noindex`), `/cerca` 200 | ok (curl, prod) |
@@ -78,7 +78,7 @@ A first attempt at a footer rendered by the server and hydrated late was a `<Sus
 | Dev: UI edit visible in SSR output without restart | ok |
 | Dev: `src/server` edit live without a manual restart | ~2 s |
 
-Sizes (gzip): vendor 107.6 KB, main 4.2 KB, route-home 0.9 KB, route-listing 0.8 KB, modal-login 0.6 KB, footer 0.5 KB. Full build ≈ 3 s.
+Sizes (gzip): vendor 107.6 KB, main 4.2 KB, route-home 0.9 KB, route-listing 0.8 KB, route-search 1.0 KB, route-swpeople 0.8 KB, modal-login 0.6 KB, footer 0.5 KB. Full build ≈ 3 s.
 
 ## Not done
 

@@ -1,0 +1,60 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/check-ai-docs.mjs*)",
+      "Bash(node scripts/test-hooks.mjs)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run check:bundle)",
+      "Bash(npm run build)",
+      "Bash(npm run smoke)",
+      "Bash(node scripts/smoke.mjs*)",
+      "Bash(sed -n *)",
+      "Bash(wc -l *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git grep *)"
+    ],
+    "deny": [
+      "Read(dist/**)",
+      "Read(node_modules/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/code-locator-budget.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "code-locator",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/code-locator-stop.mjs\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "docs-updater",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/docs-updater-stop.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

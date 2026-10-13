@@ -24,13 +24,13 @@ export function apiRouter(): Router {
     res.json(listing);
   });
 
-  router.get('swpeople/:id', async (req, res) => {
-    const charachter = await services.swpeople.fetch(req.params['id'] ?? '');
-    if (!charachter) {
+  router.get('/swpeople/:id', async (req, res) => {
+    const character = await services.swpeople.fetch(req.params['id'] ?? '');
+    if (!character) {
       res.status(404).json({ error: 'not found' });
       return;
     }
-    res.json(charachter);    
+    res.json(character);
   });
 
   return router;
